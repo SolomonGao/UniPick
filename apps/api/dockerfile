@@ -1,0 +1,35 @@
+# 1. 使用官方 Python 3.11 轻量版镜像
+FROM python:3.11-slim
+
+# 2. 设置工作目录
+WORKDIR /app
+
+# 3. 设置环境变量
+# PYTHONDONTWRITEBYTECODE: 防止 Python 生成 .pyc 缓存文件
+# PYTHONUNBUFFERED: 确保日志直接输出到控制台，不被缓存
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# 4. 安装系统级依赖 (如果后续用到 psycopg2 可能需要，目前 supabase-py 不需要)
+# RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev && rm -rf /var/lib/apt/lists/*
+
+# 5. 复制依赖文件并安装
+# 先只复制 requirements.txt，利用 Docker 缓存层加速构建
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# 6. 复制其余的应用代码
+COPY . .
+
+# 7. 创建一个非 root 用户运行 (安全最佳实践)
+# 避免如果容器被攻破，黑客直接获得 root 权限
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
+
+# 8. 暴露端口 (仅作声明，实际映射由 docker run/compose 控制)
+EXPOSE 8000
+
+# 9. 启动命令
+# --host 0.0.0.0 是必须的，否则容器外部访问不到
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
