@@ -1,0 +1,40 @@
+---
+import { ViewTransitions } from 'astro:transitions';
+
+interface Props {
+	title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content="UniPick - VT Student Marketplace" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+		
+		<ViewTransitions />
+	</head>
+	<body class="bg-gray-50 text-gray-900 pb-20"> <main class="max-w-md mx-auto min-h-screen bg-white shadow-sm relative">
+			<slot />
+		</main>
+	</body>
+</html>
+
+<style is:global>
+	/* 隐藏滚动条但保留滚动功能 (App 质感) */
+	html {
+		scrollbar-width: none;
+	}
+	body {
+		-ms-overflow-style: none;
+	} 
+	::-webkit-scrollbar { 
+		display: none; 
+	}
+</style>
