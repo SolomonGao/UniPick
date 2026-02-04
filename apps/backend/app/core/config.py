@@ -5,11 +5,7 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_KEY: str
 
-    USER: str
-    PASSWORD: str
-    HOST: str
-    PORT: str
-    DNAME: str
+    DATABASE_URL: str
 
     class Config:
             # 告诉 Pydantic 去哪里找文件

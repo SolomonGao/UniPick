@@ -4,19 +4,12 @@ from app.core.config import settings
 
 Base = declarative_base()
 
-USER = settings.USER
-PASSWORD = settings.PASSWORD
-HOST = settings.HOST
-PORT = settings.PORT
-DBNAME = settings.DNAME
-
-DATABASE_URL = f"postgresql+asyncpg://{USER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}"
 
 # 2. 创建异步引擎
 # 注意：Supabase 的连接串通常是 postgres://... 需要改成 postgresql+asyncpg://...
 # 且端口通常是 5432 (直连) 或 6543 (连接池模式，建议生产环境用 Transaction Mode)
 engine = create_async_engine(
-    DATABASE_URL,
+    settings.DATABASE_URL,
     echo=True, # 开发模式下打印 SQL，生产环境关掉
     future=True,
     connect_args={
