@@ -8,6 +8,8 @@ from app.core.database import get_db
 from app.models.item import Item
 from app.schemas.item import ItemCreate, ItemResponse
 
+from app.core.security import get_current_user_id
+
 router = APIRouter()
 
 @router.post("/", response_model=ItemResponse)
@@ -15,8 +17,7 @@ async def create_item(
     item_in: ItemCreate,
     # 依赖注入 DB Session
     db: AsyncSession = Depends(get_db),
-    # 真实场景这里还需要注入 Current User，这里先模拟
-    # current_user: User = Depends(get_current_user) 
+    user_id: str = Depends(get_current_user_id)
 ):
     # 1. 处理地理位置 (把经纬度转成 PostGIS 格式)
     # WKT 格式: "POINT(-77.0364 38.8951)"
@@ -30,7 +31,7 @@ async def create_item(
         images=item_in.images,
         location_name=item_in.location_name,
         location=geo_point, # GeoAlchemy 会自动处理
-        user_id="00000000-0000-0000-0000-000000000000" # 暂时写死，后续接 Auth
+        user_id=user_id
     )
     
     # 3. 写入数据库

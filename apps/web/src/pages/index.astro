@@ -3,7 +3,6 @@ import Layout from "../layouts/Layout.astro";
 import Marketplace from "../components/Marketplace.tsx";
 import { supabase } from "../lib/supabase";
 import { imageConfig } from "astro:assets";
-import PhotoDial from "../components/PhotoDial.tsx";
 
 // 1. 服务端获取数据 (Server Side)
 const { data: items, error } = await supabase
@@ -17,7 +16,7 @@ if (error) {
 ---
 
 <Layout title="UniPick Home">
-	<header
+	<!-- <header
 		class="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex justify-between items-center"
 	>
 		<h1 class="text-xl font-bold text-orange-600 tracking-tight">
@@ -38,35 +37,11 @@ if (error) {
 				></path></svg
 			>
 		</button>
-	</header>
+	</header> -->
 
-	<!-- <main>
+	<main>
 			<Marketplace client:load />
-		</main> -->
+		</main>
 
-	<main class="min-h-screen">
-		<div class="text-red-500">HELLO</div>
-		<div class="min-h-screen">
-			<PhotoDial client:load mode="3D" />
-		</div>
-	</main>
 </Layout>
 
-<style is:global>
-	/* 全局样式，用于 Tailwind 无法直接控制的 CSS 变量或动画 */
-	/* 定义自定义 transform-style 和 perspective */
-	.transform-style-3d {
-		transform-style: preserve-3d;
-	}
-	.perspective-1000 {
-		perspective: 1000px;
-	}
-
-	/* 文本阴影为了复古感，Tailwind 没有直接的类，手动添加 */
-	.text-shadow-cyan {
-		text-shadow: 0 0 5px #00ffff;
-	}
-	.text-shadow-gold {
-		text-shadow: 0 0 5px #ffd700;
-	}
-</style>
