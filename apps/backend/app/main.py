@@ -1,10 +1,26 @@
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.v1.endpoints import items
+from app.api.v1.items import items
 from app.core.database import get_db
 from sqlalchemy import text
 
+from fastapi.middleware.cors import CORSMiddleware
+
+
 app = FastAPI(title="UniPick API", description="API for UniPick application")
+
+origins = [
+    "http://localhost:4321",
+    "http://127.0.0.1:4321",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 app.include_router(items.router, prefix="/api/v1/items", tags=["items"])

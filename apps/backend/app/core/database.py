@@ -13,7 +13,8 @@ engine = create_async_engine(
     echo=True, # 开发模式下打印 SQL，生产环境关掉
     future=True,
     connect_args={
-        "ssl": "require"
+        "ssl": "require",
+        "statement_cache_size": 0  # 关闭缓存，避免某些环境下的错误
     }
 )
 

@@ -7,8 +7,6 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str
 
-    SUPABASE_JWT_SECRET: str
-
     class Config:
             # 告诉 Pydantic 去哪里找文件
             # 这样无论你在哪里运行命令，都能找到 .env
