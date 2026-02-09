@@ -10,6 +10,8 @@ from app.schemas.item import ItemCreate, ItemResponse
 
 from app.core.security import get_current_user_id
 
+from typing import List
+
 router = APIRouter()
 
 @router.post("/", response_model=ItemResponse)
@@ -43,3 +45,17 @@ async def create_item(
     # 通常 Pydantic 只能处理基础类型。
     # 这里为了演示简单，Schema 里暂时把 location 字段去掉了，只返回了 lat/long 的输入值
     return new_item
+
+# 列出所有物品的接口，实现分页系统
+@router.get("/", response_model=List[ItemResponse])
+async def list_items(
+    db: AsyncSession = Depends(get_db),
+    skip: int = 0,
+    limit: int = 12
+):
+    query = select(Item).offset(skip).limit(limit)
+    result = await db.execute(query)
+    items = result.scalars().all()
+    
+    # 这里我们直接返回 ORM 对象，Pydantic 会根据 response_model 自动转换
+    return items
