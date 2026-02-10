@@ -64,7 +64,7 @@ export default function LoginForm() {
       <div className="space-y-1">
         <div className="flex justify-between">
           <label className="text-sm font-medium text-gray-700">密码</label>
-          <a href="#" className="text-sm text-orange-600 hover:text-orange-500">忘记密码?</a>
+          <a href="/forgot-password" className="text-sm text-orange-600 hover:text-orange-500">忘记密码?</a>
         </div>
         <input
           {...register('password')}
