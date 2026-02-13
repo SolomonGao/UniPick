@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
 import { Loader2, MapPin, AlertCircle } from 'lucide-react';
+import { API_ENDPOINTS } from '../lib/constants';
 
 // 定义接口
 interface Item {
@@ -24,7 +25,7 @@ const fetchItems = async ({ pageParam = 0 }): Promise<Item[]> => {
     const skip = pageParam * PAGE_SIZE;
 
     const response = await fetch(
-        `http://127.0.0.1:8000/api/v1/items/?skip=${skip}&limit=${PAGE_SIZE}`
+        `${API_ENDPOINTS.items}/?skip=${skip}&limit=${PAGE_SIZE}`
     );
     
     if (!response.ok) {
@@ -103,7 +104,11 @@ export default function Feed() {
                 {data?.pages.map((page, i) => (
                     <React.Fragment key={i}>
                         {page.map((item) => (
-                            <div key={item.id} className="group border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all bg-white cursor-pointer duration-300">
+                            <a 
+                                key={item.id} 
+                                href={`/items/${item.id}`}
+                                className="group block border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all bg-white cursor-pointer duration-300"
+                            >
                                 {/* 图片区域 */}
                                 <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                                     {item.images && item.images.length > 0 ? (
@@ -135,7 +140,7 @@ export default function Feed() {
                                         <span className="truncate">{item.location_name || 'VT Campus'}</span>
                                     </div>
                                 </div>
-                            </div>
+                            </a>
                         ))}
                     </React.Fragment>
                 ))}

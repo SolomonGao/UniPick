@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, HttpUrl
 from typing import List, Optional
 from uuid import UUID
+from datetime import datetime
 
 # 基础字段
 class ItemBase(BaseModel):
@@ -22,6 +23,7 @@ class ItemResponse(ItemBase):
     id: int
     user_id: UUID
     images: List[str]
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True # 让 Pydantic 能读取 SQLAlchemy 对象

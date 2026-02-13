@@ -1,0 +1,26 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ItemDetail from '../../components/ItemDetail.tsx';
+import { supabase } from '../../lib/supabase';
+
+// 生成静态路径
+export async function getStaticPaths() {
+  const { data: items } = await supabase
+    .from('items')
+    .select('id');
+  
+  if (!items) return [];
+  
+  return items.map(item => ({
+    params: { id: item.id.toString() },
+  }));
+}
+
+const { id } = Astro.params;
+---
+
+<Layout title="Item Details - UniPick">
+  <div class="max-w-4xl mx-auto px-4 py-8">
+    <ItemDetail itemId={id} client:load />
+  </div>
+</Layout>

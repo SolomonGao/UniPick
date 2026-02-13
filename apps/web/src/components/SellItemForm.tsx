@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useDropzone } from 'react-dropzone';
 import { Loader2, Upload, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { API_ENDPOINTS } from '../lib/constants';
 import { toast } from 'sonner';
+import LocationPicker from './LocationPicker';
 
 // 1. 定义表单校验
 const itemSchema = z.object({
   title: z.string().min(2, "标题至少 2 个字"),
   price: z.number().min(0.01, "价格不能为 0"),
   description: z.string().optional(),
-  location_name: z.string().min(2, "请输入交易地点 (如: Squires Student Center)"),
-  // 我们暂时简化：经纬度先写死或由用户输入，后续可以接入 Google Maps Place API
-  // 这里为了演示流程跑通，先隐藏处理
+  location_name: z.string().min(2, "请选择交易地点"),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
 });
 
 type ItemFormInputs = z.infer<typeof itemSchema>;
@@ -26,11 +28,31 @@ export default function SellItemForm() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
-    reset
+    reset,
+    setValue,
+    watch
   } = useForm<ItemFormInputs>({
     resolver: zodResolver(itemSchema),
+    defaultValues: {
+      latitude: 37.2294,
+      longitude: -80.4139,
+      location_name: ''
+    }
   });
+
+  // 监听位置变化
+  const latitude = watch('latitude');
+  const longitude = watch('longitude');
+  const locationName = watch('location_name');
+
+  // 处理位置变化
+  const handleLocationChange = (lat: number, lng: number, name: string) => {
+    setValue('latitude', lat);
+    setValue('longitude', lng);
+    setValue('location_name', name);
+  };
 
   // 处理图片拖拽
   const { getRootProps, getInputProps } = useDropzone({
@@ -96,14 +118,12 @@ export default function SellItemForm() {
         description: data.description,
         location_name: data.location_name,
         images: imageUrls,
-        // 📍 经纬度：暂时模拟 VT Squires 的坐标，后续做地图选点
-        latitude: 37.2294,
-        longitude: -80.4139
+        latitude: data.latitude,
+        longitude: data.longitude
       };
 
       // 3. 调用 FastAPI 后端
-      // 注意：这里用 fetch 直接请求你的 Python 后端
-      const response = await fetch('http://127.0.0.1:8000/api/v1/items/', {
+      const response = await fetch(API_ENDPOINTS.items + '/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -199,10 +219,20 @@ export default function SellItemForm() {
         <textarea {...register('description')} rows={4} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="描述一下成色、交易方式..." />
       </div>
 
-      {/* 地点 */}
+      {/* 位置选择器 */}
       <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-700">交易地点</label>
-        <input {...register('location_name')} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="例如: VT Library" />
+        <Controller
+          name="location_name"
+          control={control}
+          render={({ field }) => (
+            <LocationPicker
+              latitude={latitude}
+              longitude={longitude}
+              locationName={field.value || locationName}
+              onChange={handleLocationChange}
+            />
+          )}
+        />
         {errors.location_name && <p className="text-red-500 text-xs">{errors.location_name.message}</p>}
       </div>
 

@@ -164,21 +164,46 @@ npm run preview
 
 ### Backend
 
+#### 环境配置（推荐）
+
+团队统一使用 **Conda 虚拟环境 `unipick`** 进行开发和测试：
+
+```bash
+# 激活环境
+conda activate unipick
+
+# 进入后端目录
+cd apps/backend/app
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 运行开发服务器 (localhost:8000)
+uvicorn main:app --reload
+```
+
+#### 替代方案（本地 venv）
+
+如无 Conda 环境，可使用标准 venv：
+
 ```bash
 cd apps/backend/app
 
-# Create virtual environment
+# 创建虚拟环境
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 # or: venv\Scripts\activate  # Windows
 
-# Install dependencies
+# 安装依赖
 pip install -r requirements.txt
 
-# Run development server (localhost:8000)
+# 运行开发服务器
 uvicorn main:app --reload
+```
 
-# Run with Docker
+#### Docker 部署
+
+```bash
 docker build -t unipick-backend .
 docker run -p 8000:8000 --env-file ../../.env unipick-backend
 ```
