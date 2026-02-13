@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
-import { Loader2, AlertCircle, Package, Edit2, Trash2, Eye, MapPin, DollarSign } from 'lucide-react';
+import { Loader2, Package, Edit2, Trash2, Eye, MapPin, DollarSign } from 'lucide-react';
 import { API_ENDPOINTS } from '../lib/constants';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+import { useAuth } from './AuthGuard';
 
 interface Item {
   id: number;
@@ -30,21 +31,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function MyListingsItem() {
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
   const { ref, inView } = useInView();
 
-  // 获取当前用户
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-      }
-      setIsLoading(false);
-    };
-    getCurrentUser();
-  }, []);
+  const currentUserId = user?.id || null;
 
   const fetchMyItems = async ({ pageParam = 0 }: { pageParam?: number }): Promise<Item[]> => {
     if (!currentUserId) return [];
@@ -53,7 +43,7 @@ export default function MyListingsItem() {
     const params = new URLSearchParams({
       skip: skip.toString(),
       limit: PAGE_SIZE.toString(),
-      user_id: currentUserId, // 只获取当前用户的商品
+      user_id: currentUserId,
     });
     
     const response = await fetch(`${API_ENDPOINTS.items}/?${params}`);
@@ -119,20 +109,6 @@ export default function MyListingsItem() {
 
   const allItems = data?.pages.flat() || [];
 
-  if (!currentUserId) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="text-center py-20">
-          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-          <p className="text-lg font-medium text-gray-600">请先登录</p>
-          <a href="/login" className="text-orange-600 hover:underline mt-2 inline-block">
-            去登录 →
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   if (status === 'pending') {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -159,20 +135,6 @@ export default function MyListingsItem() {
     );
   }
 
-  if (!currentUserId) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="text-center py-20">
-          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-          <p className="text-lg font-medium text-gray-600">请先登录</p>
-          <a href="/login" className="text-orange-600 hover:underline mt-2 inline-block">
-            去登录 →
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* 头部 */}
@@ -194,7 +156,7 @@ export default function MyListingsItem() {
       {status === 'error' && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
           <div className="flex items-center gap-2 text-red-600">
-            <AlertCircle className="w-5 h-5" />
+            <Loader2 className="w-5 h-5" />
             <span>{(error as Error)?.message || '加载失败'}</span>
           </div>
         </div>

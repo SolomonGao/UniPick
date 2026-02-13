@@ -8,6 +8,7 @@ from typing import List, Optional
 import logging
 
 from app.core.database import get_db
+from app.core.permissions import require_auth, require_item_owner
 from app.models.item import Item
 from app.schemas.item import ItemCreate, ItemResponse
 from app.schemas.errors import ErrorResponse, ValidationErrorResponse, NotFoundErrorResponse
@@ -432,39 +433,13 @@ async def get_item(
 async def update_item(
     item_id: int = Path(..., gt=0, description="商品ID"),
     item_update: ItemCreate = None,
+    item: Item = Depends(require_item_owner),
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id)
 ):
     """
     更新商品信息（只有商品所有者可以更新）
     """
     try:
-        # 查询商品
-        query = select(Item).where(Item.id == item_id)
-        result = await db.execute(query)
-        item = result.scalar_one_or_none()
-        
-        if not item:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "error": "ItemNotFound",
-                    "message": f"未找到ID为 {item_id} 的商品",
-                    "details": {"item_id": item_id}
-                }
-            )
-        
-        # 检查权限
-        if str(item.user_id) != str(user_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "Forbidden",
-                    "message": "您没有权限修改此商品",
-                    "details": {"item_id": item_id, "user_id": user_id}
-                }
-            )
-        
         # 验证分类
         if item_update.category and item_update.category not in VALID_CATEGORIES:
             raise HTTPException(
@@ -491,7 +466,7 @@ async def update_item(
         await db.commit()
         await db.refresh(item)
         
-        logger.info(f"用户 {user_id} 更新了商品: {item_id}")
+        logger.info(f"用户 {item.user_id} 更新了商品: {item_id}")
         return item
         
     except HTTPException:
@@ -521,44 +496,18 @@ async def update_item(
 )
 async def delete_item(
     item_id: int = Path(..., gt=0, description="商品ID"),
+    item: Item = Depends(require_item_owner),
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id)
 ):
     """
     删除商品（只有商品所有者可以删除）
     """
     try:
-        # 查询商品
-        query = select(Item).where(Item.id == item_id)
-        result = await db.execute(query)
-        item = result.scalar_one_or_none()
-        
-        if not item:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "error": "ItemNotFound",
-                    "message": f"未找到ID为 {item_id} 的商品",
-                    "details": {"item_id": item_id}
-                }
-            )
-        
-        # 检查权限
-        if str(item.user_id) != str(user_id):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "Forbidden",
-                    "message": "您没有权限删除此商品",
-                    "details": {"item_id": item_id, "user_id": user_id}
-                }
-            )
-        
         # 删除商品
         await db.delete(item)
         await db.commit()
         
-        logger.info(f"用户 {user_id} 删除了商品: {item_id}")
+        logger.info(f"用户 {item.user_id} 删除了商品: {item_id}")
         return {"message": "商品删除成功", "item_id": item_id}
         
     except HTTPException:

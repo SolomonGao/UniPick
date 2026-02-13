@@ -1,11 +1,14 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Providers from '../components/Providers';
-import ManageItemsplace from '../components/ManageItemsplace';
+import AuthGuard from '../components/AuthGuard';
+import MyListingsItem from '../components/MyListingsItem';
 ---
 
 <Layout title="我的发布 - UniPick">
-  <Providers client:load>
-    <ManageItemsplace client:load />
+  <Providers client:only="react">
+    <AuthGuard client:only="react" redirectTo="/login">
+      <MyListingsItem client:only="react" />
+    </AuthGuard>
   </Providers>
 </Layout>

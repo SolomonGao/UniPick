@@ -1,17 +1,14 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Providers from '../components/Providers';
+import AuthGuard from '../components/AuthGuard';
 import SellItemForm from '../components/SellItemForm';
 ---
 
-<Layout title="Sell Item - UniPick">
-  <div class="max-w-3xl mx-auto px-4 py-12">
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900">发布闲置</h1>
-      <p class="text-gray-500 mt-2">让你的闲置物品找到新主人</p>
-    </div>
-    
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-      <SellItemForm client:load />
-    </div>
-  </div>
+<Layout title="发布商品 - UniPick">
+  <Providers client:only="react">
+    <AuthGuard client:only="react" redirectTo="/login">
+      <SellItemForm client:only="react" />
+    </AuthGuard>
+  </Providers>
 </Layout>

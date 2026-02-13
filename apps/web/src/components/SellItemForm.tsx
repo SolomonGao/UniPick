@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { API_ENDPOINTS } from '../lib/constants';
 import { toast } from 'sonner';
 import LocationPicker from './LocationPicker';
+import { useAuth } from './AuthGuard';
 
 // 商品分类选项
 const CATEGORIES = [
