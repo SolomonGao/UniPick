@@ -18,6 +18,7 @@ class ItemBase(BaseModel):
 # 创建时需要的字段
 class ItemCreate(ItemBase):
     images: List[str] = [] # 图片 URL 列表
+    category: Optional[str] = None  # 商品分类
 
 # 读取时返回的字段 (Response)
 class ItemResponse(ItemBase):
