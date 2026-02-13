@@ -9,11 +9,22 @@ import { API_ENDPOINTS } from '../lib/constants';
 import { toast } from 'sonner';
 import LocationPicker from './LocationPicker';
 
+// 商品分类选项
+const CATEGORIES = [
+  { value: 'electronics', label: '电子产品' },
+  { value: 'furniture', label: '家具' },
+  { value: 'books', label: '书籍' },
+  { value: 'clothing', label: '服装' },
+  { value: 'sports', label: '运动' },
+  { value: 'others', label: '其他' },
+];
+
 // 1. 定义表单校验
 const itemSchema = z.object({
   title: z.string().min(2, "标题至少 2 个字"),
   price: z.number().min(0.01, "价格不能为 0"),
   description: z.string().optional(),
+  category: z.string().min(1, "请选择分类"),
   location_name: z.string().min(2, "请选择交易地点"),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
@@ -116,6 +127,7 @@ export default function SellItemForm() {
         title: data.title,
         price: data.price,
         description: data.description,
+        category: data.category,
         location_name: data.location_name,
         images: imageUrls,
         latitude: data.latitude,
@@ -211,6 +223,23 @@ export default function SellItemForm() {
           placeholder="0.00"
         />
         {errors.price && <p className="text-red-500 text-xs">{errors.price.message}</p>}
+      </div>
+
+      {/* 分类 */}
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-gray-700">分类</label>
+        <select
+          {...register('category')}
+          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+        >
+          <option value="">请选择分类</option>
+          {CATEGORIES.map((cat) => (
+            <option key={cat.value} value={cat.value}>
+              {cat.label}
+            </option>
+          ))}
+        </select>
+        {errors.category && <p className="text-red-500 text-xs">{errors.category.message}</p>}
       </div>
 
       {/* 描述 */}

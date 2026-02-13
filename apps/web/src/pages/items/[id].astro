@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import ItemDetail from '../../components/ItemDetail.tsx';
 import { supabase } from '../../lib/supabase';
+export const prerender = true;
 
 // 生成静态路径
 export async function getStaticPaths() {
