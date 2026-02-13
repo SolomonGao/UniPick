@@ -172,6 +172,8 @@ async def list_items(
     radius: Optional[float] = Query(None, gt=0, le=100, description="搜索半径(km)"),
     sort_by: Optional[str] = Query(None, description="排序字段: price, created_at"),
     sort_order: Optional[str] = Query("desc", description="排序方向: asc, desc"),
+    exclude_user_id: Optional[str] = Query(None, description="排除指定用户的商品"),
+    user_id: Optional[str] = Query(None, description="只显示指定用户的商品"),
 ):
     """
     搜索商品列表，支持：
@@ -260,6 +262,14 @@ async def list_items(
                 Item.description.ilike(f"%{keyword}%")
             )
             query = query.where(search_filter)
+        
+        # 排除指定用户的商品（优先显示其他卖家的）
+        if exclude_user_id:
+            query = query.where(Item.user_id != exclude_user_id)
+        
+        # 只显示指定用户的商品
+        if user_id:
+            query = query.where(Item.user_id == user_id)
         
         # 价格范围
         if min_price is not None:
@@ -404,6 +414,163 @@ async def get_item(
             detail={
                 "error": "DatabaseError",
                 "message": "数据库查询失败，请稍后重试",
+                "details": {"error_type": type(e).__name__}
+            }
+        )
+
+
+@router.put(
+    "/{item_id}",
+    response_model=ItemResponse,
+    responses={
+        200: {"description": "商品更新成功"},
+        401: {"model": ErrorResponse, "description": "未授权"},
+        403: {"model": ErrorResponse, "description": "无权限"},
+        404: {"model": NotFoundErrorResponse, "description": "商品未找到"},
+    }
+)
+async def update_item(
+    item_id: int = Path(..., gt=0, description="商品ID"),
+    item_update: ItemCreate = None,
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    更新商品信息（只有商品所有者可以更新）
+    """
+    try:
+        # 查询商品
+        query = select(Item).where(Item.id == item_id)
+        result = await db.execute(query)
+        item = result.scalar_one_or_none()
+        
+        if not item:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "error": "ItemNotFound",
+                    "message": f"未找到ID为 {item_id} 的商品",
+                    "details": {"item_id": item_id}
+                }
+            )
+        
+        # 检查权限
+        if str(item.user_id) != str(user_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "Forbidden",
+                    "message": "您没有权限修改此商品",
+                    "details": {"item_id": item_id, "user_id": user_id}
+                }
+            )
+        
+        # 验证分类
+        if item_update.category and item_update.category not in VALID_CATEGORIES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": "InvalidCategory",
+                    "message": f"无效的商品分类: {item_update.category}",
+                    "details": {"valid_categories": list(VALID_CATEGORIES)}
+                }
+            )
+        
+        # 更新字段
+        item.title = item_update.title
+        item.price = item_update.price
+        item.description = item_update.description
+        item.category = item_update.category
+        item.location_name = item_update.location_name
+        item.images = item_update.images
+        
+        # 更新地理位置
+        if item_update.latitude and item_update.longitude:
+            item.location = f"POINT({item_update.longitude} {item_update.latitude})"
+        
+        await db.commit()
+        await db.refresh(item)
+        
+        logger.info(f"用户 {user_id} 更新了商品: {item_id}")
+        return item
+        
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        await db.rollback()
+        logger.error(f"更新商品数据库错误: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "DatabaseError",
+                "message": "更新商品失败，请稍后重试",
+                "details": {"error_type": type(e).__name__}
+            }
+        )
+
+
+@router.delete(
+    "/{item_id}",
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "商品删除成功"},
+        401: {"model": ErrorResponse, "description": "未授权"},
+        403: {"model": ErrorResponse, "description": "无权限"},
+        404: {"model": NotFoundErrorResponse, "description": "商品未找到"},
+    }
+)
+async def delete_item(
+    item_id: int = Path(..., gt=0, description="商品ID"),
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    删除商品（只有商品所有者可以删除）
+    """
+    try:
+        # 查询商品
+        query = select(Item).where(Item.id == item_id)
+        result = await db.execute(query)
+        item = result.scalar_one_or_none()
+        
+        if not item:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "error": "ItemNotFound",
+                    "message": f"未找到ID为 {item_id} 的商品",
+                    "details": {"item_id": item_id}
+                }
+            )
+        
+        # 检查权限
+        if str(item.user_id) != str(user_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "Forbidden",
+                    "message": "您没有权限删除此商品",
+                    "details": {"item_id": item_id, "user_id": user_id}
+                }
+            )
+        
+        # 删除商品
+        await db.delete(item)
+        await db.commit()
+        
+        logger.info(f"用户 {user_id} 删除了商品: {item_id}")
+        return {"message": "商品删除成功", "item_id": item_id}
+        
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        await db.rollback()
+        logger.error(f"删除商品数据库错误: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "DatabaseError",
+                "message": "删除商品失败，请稍后重试",
                 "details": {"error_type": type(e).__name__}
             }
         )

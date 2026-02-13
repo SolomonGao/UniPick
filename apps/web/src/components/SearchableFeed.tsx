@@ -4,6 +4,7 @@ import { useInView } from 'react-intersection-observer';
 import { Loader2, MapPin, AlertCircle, Search, Navigation } from 'lucide-react';
 import { API_ENDPOINTS } from '../lib/constants';
 import { getUserLocation, saveUserLocation, getLocationDisplay, formatDistance } from '../lib/geo';
+import { supabase } from '../lib/supabase';
 import SearchBar, { type SearchFilters } from './SearchBar';
 
 // 定义接口
@@ -29,11 +30,13 @@ const PAGE_SIZE = 12;
 const fetchItems = async ({ 
   pageParam = 0, 
   filters,
-  userLocation
+  userLocation,
+  currentUserId
 }: { 
   pageParam?: number; 
   filters: SearchFilters;
   userLocation?: { lat: number; lng: number } | null;
+  currentUserId?: string | null;
 }): Promise<Item[]> => {
   const skip = pageParam * PAGE_SIZE;
   
@@ -47,11 +50,16 @@ const fetchItems = async ({
   if (filters.maxPrice) params.append('max_price', filters.maxPrice.toString());
   if (filters.category) params.append('category', filters.category);
   
+  // 排除当前用户的商品，优先显示其他卖家的
+  if (currentUserId) {
+    params.append('exclude_user_id', currentUserId);
+  }
+  
   // 添加地理位置参数
   if (userLocation && filters.useLocation !== false) {
     params.append('lat', userLocation.lat.toString());
     params.append('lng', userLocation.lng.toString());
-    params.append('radius', (filters.radius || 5).toString()); // 默认 5km
+    params.append('radius', (filters.radius || 5).toString());
     
     // 如果用户选择按距离排序
     if (filters.sortBy === 'distance') {
@@ -110,9 +118,21 @@ function FeedContent() {
   });
   
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const { ref, inView } = useInView();
+
+  // 获取当前用户ID
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    };
+    getCurrentUser();
+  }, []);
 
   // 获取用户位置
   const fetchUserLocation = useCallback(async () => {
@@ -183,8 +203,8 @@ function FeedContent() {
     status,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['items', filters, userLocation],
-    queryFn: ({ pageParam }) => fetchItems({ pageParam, filters, userLocation }),
+    queryKey: ['items', filters, userLocation, currentUserId],
+    queryFn: ({ pageParam }) => fetchItems({ pageParam, filters, userLocation, currentUserId }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage.length < PAGE_SIZE) return undefined;
@@ -195,7 +215,7 @@ function FeedContent() {
 
   useEffect(() => {
     refetch();
-  }, [filters, userLocation, refetch]);
+  }, [filters, userLocation, currentUserId, refetch]);
 
   useEffect(() => {
     if (inView && hasNextPage) {

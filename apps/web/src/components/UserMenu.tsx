@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
-import { Loader2, LogOut, User as UserIcon, ChevronDown } from 'lucide-react';
+import { Loader2, LogOut, User as UserIcon, ChevronDown, Package } from 'lucide-react';
 
 export default function UserMenu() {
   const [user, setUser] = useState<User | null>(null);
@@ -76,6 +76,10 @@ export default function UserMenu() {
             
             <a href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
               My Profile
+            </a>
+            <a href="/my-listings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
+              <Package className="w-4 h-4" />
+              我的发布
             </a>
             <a href="/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
               Settings
