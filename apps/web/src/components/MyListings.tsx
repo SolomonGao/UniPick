@@ -29,7 +29,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   others: '其他',
 };
 
-export default function MyListings() {
+export default function MyListingsItem() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { ref, inView } = useInView();
