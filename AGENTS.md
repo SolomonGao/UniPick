@@ -344,3 +344,29 @@ Backend uses `asyncpg` with SSL required. Ensure your `DATABASE_URL` includes `?
 If frontend can't connect to backend, verify:
 1. Backend CORS origins include `http://localhost:4321`
 2. Both services are running on correct ports
+
+---
+
+## Agent Development Workflow
+
+### Branch Strategy
+
+- **`main`** - Production-ready code, only merge via PR
+- **`agent-dev`** - AI Agent development branch
+
+### Workflow
+
+1. Agent makes changes on `agent-dev` branch
+2. Agent commits with descriptive messages
+3. User reviews changes via GitHub PR
+4. User merges to `main` when satisfied
+
+### Current Agent Branch
+
+```bash
+# Agent works on this branch
+git checkout agent-dev
+
+# User merges to main via PR on GitHub
+# https://github.com/SolomonGao/UniPick/pull/new/agent-dev
+```
