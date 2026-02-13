@@ -12,6 +12,8 @@ app = FastAPI(title="UniPick API", description="API for UniPick application")
 origins = [
     "http://localhost:4321",
     "http://127.0.0.1:4321",
+    "http://localhost:4322",
+    "http://127.0.0.1:4322",
 ]
 
 app.add_middleware(

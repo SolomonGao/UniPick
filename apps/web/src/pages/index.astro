@@ -1,15 +1,10 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import Providers from "../components/Providers.tsx";
-import SearchableFeed from "../components/SearchableFeed.tsx";
 import Marketplace from "../components/Marketplace";
 ---
 
 <Layout title="UniPick - VT Marketplace">
   <main class="max-w-7xl mx-auto px-4 pt-6">
-    <Providers client:only="react">
-      <!-- <SearchableFeed client:load /> -->
-      <Marketplace/>
-    </Providers>
+    <Marketplace client:only="react" />
   </main>
 </Layout>

@@ -50,15 +50,15 @@ export default function ForgotPasswordForm() {
           <CheckCircle className="w-8 h-8" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-gray-900">邮件已发送</h3>
-          <p className="text-gray-500 mt-2 text-sm">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">邮件已发送</h3>
+          <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-2 text-sm">
             如果该邮箱已注册，你将收到一封包含重置链接的邮件。
             请检查你的收件箱（包括垃圾邮件）。
           </p>
         </div>
         <a 
           href="/login" 
-          className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition-colors"
+          className="block w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 text-gray-700 dark:text-gray-300 font-bold py-3 rounded-xl transition-colors"
         >
           返回登录
         </a>
@@ -70,26 +70,26 @@ export default function ForgotPasswordForm() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 mb-2">
-         <a href="/login" className="text-gray-400 hover:text-gray-600 transition-colors">
+         <a href="/login" className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:text-gray-500 transition-colors">
             <ArrowLeft className="w-5 h-5" />
          </a>
-         <h2 className="text-xl font-bold text-gray-900">重置密码</h2>
+         <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">重置密码</h2>
       </div>
       
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
         输入你的注册邮箱，我们将发送重置链接给你。
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700">邮箱地址</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">邮箱地址</label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
             <input
               {...register('email')}
               type="email"
               placeholder="name@vt.edu"
-              className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+              className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-xl focus:bg-white dark:bg-gray-800 focus:ring-2 focus:ring-orange-500 outline-none transition-all"
             />
           </div>
           {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}

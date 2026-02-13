@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # 有效的排序字段
 VALID_SORT_FIELDS = {"price", "created_at", "distance"}
 VALID_SORT_ORDERS = {"asc", "desc"}
-VALID_CATEGORIES = {"electronics", "furniture", "books", "sports", "music", "others"}
+VALID_CATEGORIES = {"electronics", "furniture", "books", "clothing", "sports", "music", "others"}
 
 # 地球半径（用于距离计算）
 EARTH_RADIUS_KM = 6371

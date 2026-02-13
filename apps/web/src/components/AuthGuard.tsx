@@ -1,6 +1,5 @@
 import React, { useEffect, useState, createContext, useContext } from 'react';
 import { supabase } from '../lib/supabase';
-import { Loader2, AlertCircle } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -17,7 +16,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-// 认证 Provider - 只检查一次
+// 认证 Provider
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,21 +24,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
     
-    // 1. 先从本地存储同步获取 session（快）
+    // 从本地存储获取 session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return;
-      
-      if (session?.user) {
-        setUser(session.user);
-        setIsLoading(false);
-      } else {
-        // 本地没有 session，确认未登录
-        setUser(null);
-        setIsLoading(false);
-      }
+      setUser(session?.user ?? null);
+      setIsLoading(false);
     });
 
-    // 2. 监听登录状态变化
+    // 监听登录状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (mounted) {
         setUser(session?.user ?? null);
@@ -63,46 +55,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// 路由守卫
-interface AuthGuardProps {
+// 访客守卫（已登录用户不能访问登录页、注册页）
+export function GuestGuard({ 
+  children, 
+  redirectTo = '/' 
+}: { 
   children: React.ReactNode;
   redirectTo?: string;
-}
-
-export function AuthGuard({ children, redirectTo = '/login' }: AuthGuardProps) {
-  const { user, isLoading, isAuthenticated } = useAuth();
+}) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && redirectTo) {
-      window.location.href = redirectTo;
-    }
-  }, [isLoading, isAuthenticated, redirectTo]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-orange-600 mx-auto mb-4" />
-          <p className="text-gray-600">需要登录</p>
-        </div>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-}
-
-// 访客守卫（已登录用户不能访问登录页等）
-export function GuestGuard({ children, redirectTo = '/' }: { children: React.ReactNode; redirectTo?: string }) {
-  const { isLoading, isAuthenticated } = useAuth();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session?.user);
+      setIsLoading(false);
+    });
+  }, []);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -113,7 +82,7 @@ export function GuestGuard({ children, redirectTo = '/' }: { children: React.Rea
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+        <div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -124,5 +93,3 @@ export function GuestGuard({ children, redirectTo = '/' }: { children: React.Rea
 
   return <>{children}</>;
 }
-
-export default AuthGuard;

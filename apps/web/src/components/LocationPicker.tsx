@@ -147,10 +147,10 @@ export default function LocationPicker({
   if (!MAPBOX_ACCESS_TOKEN) {
     return (
       <div className="space-y-3">
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           交易地点 <span className="text-red-500">*</span>
         </label>
-        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 text-amber-600 mb-2">
             <MapPin className="w-4 h-4" />
             <span className="text-sm font-medium">地图功能未配置</span>
@@ -162,7 +162,7 @@ export default function LocationPicker({
             placeholder="例如: VT Library, Blacksburg"
             className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
           />
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-2">
             当前使用文本输入。配置 PUBLIC_MAPBOX_TOKEN 后可启用地图选点功能。
           </p>
         </div>
@@ -172,19 +172,19 @@ export default function LocationPicker({
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
         交易地点 <span className="text-red-500">*</span>
       </label>
       
       {/* 切换输入方式 */}
-      <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+      <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
         <button
           type="button"
           onClick={() => setShowMap(true)}
           className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
             showMap 
-              ? 'bg-white text-orange-600 shadow-sm' 
-              : 'text-gray-600 hover:text-gray-900'
+              ? 'bg-white dark:bg-gray-800 text-orange-600 shadow-sm' 
+              : 'text-gray-600 dark:text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:text-gray-100'
           }`}
         >
           <MapIcon className="w-4 h-4" />
@@ -195,8 +195,8 @@ export default function LocationPicker({
           onClick={() => setShowMap(false)}
           className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
             !showMap 
-              ? 'bg-white text-orange-600 shadow-sm' 
-              : 'text-gray-600 hover:text-gray-900'
+              ? 'bg-white dark:bg-gray-800 text-orange-600 shadow-sm' 
+              : 'text-gray-600 dark:text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:text-gray-100'
           }`}
         >
           <Type className="w-4 h-4" />
@@ -215,7 +215,7 @@ export default function LocationPicker({
               placeholder="Search location (e.g., Squires Student Center)"
               className="w-full pl-10 pr-24 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
             />
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
             <button
               type="button"
               onClick={() => handleSearch()}
@@ -234,7 +234,7 @@ export default function LocationPicker({
           )}
 
           {/* 地图容器 */}
-          <div className="relative h-[300px] rounded-xl overflow-hidden border border-gray-200">
+          <div className="relative h-[300px] rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
             <Map
               {...viewState}
               onMove={(evt) => setViewState(evt.viewState)}
@@ -265,7 +265,7 @@ export default function LocationPicker({
             </Map>
 
             {/* 提示文字 */}
-            <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg text-xs text-gray-600 shadow-sm">
+            <div className="absolute bottom-2 left-2 right-2 bg-white dark:bg-gray-800/90 backdrop-blur-sm px-3 py-2 rounded-lg text-xs text-gray-600 dark:text-gray-400 dark:text-gray-500 shadow-sm">
               <div className="flex items-center gap-1">
                 <Navigation className="w-3 h-3" />
                 Click map or drag pin to set location. Click 📍 to use your current position.
@@ -283,7 +283,7 @@ export default function LocationPicker({
             placeholder="例如: VT Library, Squires Student Center, Blacksburg"
             className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
           />
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
             请尽可能详细地描述交易地点，方便买家找到你。
           </p>
         </>
@@ -293,7 +293,7 @@ export default function LocationPicker({
       {locationName && (
         <div className="flex items-start gap-2 p-3 bg-orange-50 rounded-lg border border-orange-100">
           <MapPin className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
-          <div className="text-sm text-gray-700">
+          <div className="text-sm text-gray-700 dark:text-gray-300">
             <span className="font-medium">Selected:</span> {locationName}
           </div>
         </div>

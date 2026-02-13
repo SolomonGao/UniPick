@@ -1,14 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import Providers from '../components/Providers';
-import AuthGuard from '../components/AuthGuard';
-import SellItemForm from '../components/SellItemForm';
+import SellPage from '../components/SellPage';
 ---
 
 <Layout title="发布商品 - UniPick">
-  <Providers client:only="react">
-    <AuthGuard redirectTo="/login">
-      <SellItemForm />
-    </AuthGuard>
-  </Providers>
+  <SellPage client:only="react" />
 </Layout>

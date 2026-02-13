@@ -17,6 +17,8 @@ interface SearchBarProps {
   userLocation?: { lat: number; lng: number } | null;
   onRefreshLocation?: () => void;
   isLocating?: boolean;
+  showFilters?: boolean;
+  onToggleFilters?: () => void;
 }
 
 const CATEGORIES = [
@@ -49,7 +51,9 @@ export default function SearchBar({
   initialFilters, 
   userLocation, 
   onRefreshLocation,
-  isLocating 
+  isLocating,
+  showFilters: controlledShowFilters,
+  onToggleFilters
 }: SearchBarProps) {
   const [keyword, setKeyword] = useState(initialFilters?.keyword || '');
   const [minPrice, setMinPrice] = useState(initialFilters?.minPrice?.toString() || '');
@@ -58,7 +62,11 @@ export default function SearchBar({
   const [useLocation, setUseLocation] = useState(initialFilters?.useLocation ?? false);
   const [radius, setRadius] = useState(initialFilters?.radius || 10);
   const [sortBy, setSortBy] = useState(initialFilters?.sortBy || 'created_at');
-  const [showFilters, setShowFilters] = useState(false);
+  const [internalShowFilters, setInternalShowFilters] = useState(false);
+  
+  // 支持受控和非受控模式
+  const showFilters = controlledShowFilters !== undefined ? controlledShowFilters : internalShowFilters;
+  const setShowFilters = onToggleFilters || setInternalShowFilters;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,10 +100,11 @@ export default function SearchBar({
     });
   };
 
-  const hasActiveFilters = keyword || minPrice || maxPrice || category || useLocation || radius !== 10 || sortBy !== 'created_at';
+  // 检测是否有激活的筛选条件（不包含默认值）
+  const hasActiveFilters = keyword || minPrice || maxPrice || category || useLocation;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-4">
+    <div className="w-full bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 space-y-4 transition-colors duration-300">
       {/* 搜索栏 */}
       <form onSubmit={handleSubmit} className="flex gap-2">
         <div className="flex-1 relative">
@@ -105,13 +114,13 @@ export default function SearchBar({
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             placeholder="搜索商品..."
-            className="w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+            className="w-full pl-10 pr-10 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:bg-white dark:focus:bg-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
           />
           {keyword && (
             <button
               type="button"
               onClick={() => setKeyword('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <X className="w-4 h-4" />
             </button>
@@ -119,11 +128,17 @@ export default function SearchBar({
         </div>
         <button
           type="button"
-          onClick={() => setShowFilters(!showFilters)}
+          onClick={() => {
+            if (onToggleFilters) {
+              onToggleFilters();
+            } else {
+              setInternalShowFilters(!showFilters);
+            }
+          }}
           className={`px-4 py-3 rounded-xl border transition-colors flex items-center gap-2 ${
             showFilters || hasActiveFilters
-              ? 'bg-orange-50 border-orange-200 text-orange-600'
-              : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+              ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-600 dark:text-orange-400'
+              : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
           }`}
         >
           <SlidersHorizontal className="w-5 h-5" />
@@ -142,14 +157,14 @@ export default function SearchBar({
 
       {/* 位置状态 */}
       {userLocation && (
-        <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg">
+        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg">
           <MapPin className="w-4 h-4" />
           <span>已获取您的位置</span>
           {onRefreshLocation && (
             <button
               onClick={onRefreshLocation}
               disabled={isLocating}
-              className="ml-auto text-xs underline hover:no-underline disabled:opacity-50"
+              className="ml-2 text-green-700 dark:text-green-300 hover:underline disabled:opacity-50"
             >
               {isLocating ? '更新中...' : '刷新'}
             </button>
@@ -157,164 +172,124 @@ export default function SearchBar({
         </div>
       )}
 
-      {/* 筛选面板 */}
+      {/* 筛选选项 */}
       {showFilters && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-100 animate-in fade-in slide-in-from-top-2 duration-200">
-          {/* 价格范围 */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-              <DollarSign className="w-4 h-4" />
-              价格范围
-            </label>
-            <div className="flex items-center gap-2">
+        <div className="w-full pt-4 border-t border-gray-100 dark:border-gray-700 space-y-4 min-w-0">
+          {/* 分类和价格 */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 min-w-0">
+            {/* 分类 */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Tag className="w-4 h-4" />
+                分类
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 outline-none"
+              >
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.value} value={cat.value}>{cat.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 最低价格 */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <DollarSign className="w-4 h-4" />
+                最低价格
+              </label>
               <input
                 type="number"
                 min="0"
-                step="0.01"
                 value={minPrice}
                 onChange={(e) => setMinPrice(e.target.value)}
-                placeholder="最低"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                placeholder="0"
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 outline-none"
               />
-              <span className="text-gray-400">-</span>
+            </div>
+
+            {/* 最高价格 */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <DollarSign className="w-4 h-4" />
+                最高价格
+              </label>
               <input
                 type="number"
                 min="0"
-                step="0.01"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(e.target.value)}
-                placeholder="最高"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                placeholder="不限"
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 outline-none"
               />
             </div>
           </div>
 
-          {/* 分类 */}
+          {/* 位置筛选 */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-              <Tag className="w-4 h-4" />
-              分类
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useLocation}
+                onChange={(e) => setUseLocation(e.target.checked)}
+                className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
+              />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                按距离筛选（需要位置权限）
+              </span>
             </label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat.value} value={cat.value}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
+            
+            {useLocation && (
+              <div className="ml-6 space-y-2">
+                <label className="text-sm text-gray-600 dark:text-gray-400">搜索半径</label>
+                <select
+                  value={radius}
+                  onChange={(e) => setRadius(Number(e.target.value))}
+                  className="w-full sm:w-auto px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 outline-none"
+                >
+                  {RADIUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
-          {/* 距离范围 */}
+          {/* 排序 */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-              <MapPin className="w-4 h-4" />
-              搜索范围: {radius} miles
-            </label>
-            <div className="space-y-3">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={useLocation}
-                  onChange={(e) => setUseLocation(e.target.checked)}
-                  className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
-                />
-                <span className="text-sm text-gray-600">使用我的位置</span>
-              </label>
-              {useLocation && (
-                <div className="space-y-2">
-                  <input
-                    type="range"
-                    min="1"
-                    max="100"
-                    step="1"
-                    value={radius}
-                    onChange={(e) => setRadius(Number(e.target.value))}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>1 mile</span>
-                    <span className="font-medium text-orange-600">{radius} miles</span>
-                    <span>100 miles</span>
-                  </div>
-                </div>
-              )}
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">排序方式</label>
+            <div className="flex flex-wrap gap-2">
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setSortBy(opt.value)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    sortBy === opt.value
+                      ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* 排序方式 */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-              <Navigation className="w-4 h-4" />
-              排序方式
-            </label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+          {/* 清除筛选 */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 underline"
             >
-              {SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* 清除按钮 */}
-      {hasActiveFilters && showFilters && (
-        <div className="pt-2 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={handleClear}
-            className="w-full sm:w-auto px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors text-sm"
-          >
-            清除全部筛选
-          </button>
-        </div>
-      )}
-
-      {/* 已选筛选标签 */}
-      {hasActiveFilters && !showFilters && (
-        <div className="flex flex-wrap gap-2 pt-2">
-          {keyword && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm">
-              关键词: {keyword}
-              <button onClick={() => setKeyword('')} className="hover:text-orange-900"><X className="w-3 h-3" /></button>
-            </span>
-          )}
-          {(minPrice || maxPrice) && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm">
-              价格: ${minPrice || '0'} - ${maxPrice || '∞'}
-              <button onClick={() => { setMinPrice(''); setMaxPrice(''); }} className="hover:text-orange-900"><X className="w-3 h-3" /></button>
-            </span>
-          )}
-          {category && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm">
-              {CATEGORIES.find(c => c.value === category)?.label}
-              <button onClick={() => setCategory('')} className="hover:text-orange-900"><X className="w-3 h-3" /></button>
-            </span>
-          )}
-          {useLocation && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
-              <MapPin className="w-3 h-3" />
-              Within {radius} miles
-            </span>
-          )}
-          {sortBy && sortBy !== 'created_at' && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm">
-              {SORT_OPTIONS.find(s => s.value === sortBy)?.label}
-            </span>
+              清除所有筛选
+            </button>
           )}
         </div>
       )}
     </div>
   );
 }
-
-export { CATEGORIES };

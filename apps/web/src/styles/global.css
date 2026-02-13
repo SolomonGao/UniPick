@@ -1,7 +1,42 @@
 @import "tailwindcss";
 
+/* Tailwind CSS v4 - 启用暗黑模式 */
+@custom-variant dark (&:is(.dark *));
+
+/* 基础颜色变量 */
+:root {
+  --bg-primary: #f9fafb;
+  --bg-secondary: #ffffff;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --border-color: #e5e7eb;
+}
+
+html.dark {
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --border-color: #374151;
+}
+
 @layer utilities {
   .transform-style-3d {
     transform-style: preserve-3d;
   }
+}
+
+/* 全局过渡动画 */
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* 确保 body 背景色正确 */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }

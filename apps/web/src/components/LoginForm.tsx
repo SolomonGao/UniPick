@@ -50,12 +50,12 @@ export default function LoginForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* 邮箱 */}
       <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-700">邮箱</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">邮箱</label>
         <input
           {...register('email')}
           type="email"
           placeholder="yourname@...com"
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
         />
         {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
       </div>
@@ -63,13 +63,13 @@ export default function LoginForm() {
       {/* 密码 */}
       <div className="space-y-1">
         <div className="flex justify-between">
-          <label className="text-sm font-medium text-gray-700">密码</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">密码</label>
           <a href="/forgot-password" className="text-sm text-orange-600 hover:text-orange-500">忘记密码?</a>
         </div>
         <input
           {...register('password')}
           type="password"
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
         />
         {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
       </div>

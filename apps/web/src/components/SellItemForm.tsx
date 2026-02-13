@@ -224,7 +224,8 @@ export default function SellItemForm() {
       reset();
       setImages([]);
       setExistingImages([]);
-      window.location.href = "/";
+      // 编辑模式返回我的发布，新增模式返回首页
+      window.location.href = isEditMode ? "/my-listings" : "/";
 
     } catch (error: any) {
       console.error(error);
@@ -257,11 +258,11 @@ export default function SellItemForm() {
       {/* 返回按钮 */}
       <div className="flex items-center gap-4">
         <a 
-          href="/" 
+          href={isEditMode ? "/my-listings" : "/"} 
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span className="text-sm font-medium">返回主页</span>
+          <span className="text-sm font-medium">{isEditMode ? "返回我的发布" : "返回主页"}</span>
         </a>
         {isEditMode && (
           <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">

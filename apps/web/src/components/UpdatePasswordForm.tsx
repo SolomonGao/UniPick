@@ -77,8 +77,8 @@ export default function UpdatePasswordForm() {
           <CheckCircle className="w-8 h-8" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-gray-900">密码修改成功</h3>
-          <p className="text-gray-500 mt-2 text-sm">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">密码修改成功</h3>
+          <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-2 text-sm">
             你的密码已更新，正在跳转到首页...
           </p>
         </div>
@@ -89,8 +89,8 @@ export default function UpdatePasswordForm() {
   return (
     <div className="space-y-6">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">设置新密码</h2>
-        <p className="text-sm text-gray-500 mt-2">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">设置新密码</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-2">
           请输入你的新密码，尽量复杂一点哦。
         </p>
       </div>
@@ -115,26 +115,26 @@ export default function UpdatePasswordForm() {
       {(!serverError || serverError.includes("Password")) && (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">新密码</label>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">新密码</label>
             <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <input
                 {...register('password')}
                 type="password"
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-xl focus:bg-white dark:bg-gray-800 focus:ring-2 focus:ring-orange-500 outline-none transition-all"
                 />
             </div>
             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
             </div>
 
             <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">确认新密码</label>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">确认新密码</label>
             <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <input
                 {...register('confirmPassword')}
                 type="password"
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-xl focus:bg-white dark:bg-gray-800 focus:ring-2 focus:ring-orange-500 outline-none transition-all"
                 />
             </div>
             {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
