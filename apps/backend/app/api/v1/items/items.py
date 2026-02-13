@@ -17,9 +17,44 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 # 有效的排序字段
-VALID_SORT_FIELDS = {"price", "created_at"}
+VALID_SORT_FIELDS = {"price", "created_at", "distance"}
 VALID_SORT_ORDERS = {"asc", "desc"}
 VALID_CATEGORIES = {"electronics", "furniture", "books", "sports", "music", "others"}
+
+# 地球半径（用于距离计算）
+EARTH_RADIUS_KM = 6371
+EARTH_RADIUS_MILES = 3959
+
+def get_fuzzy_location(distance_km: float) -> str:
+    """获取模糊位置描述（隐私保护）"""
+    distance_miles = distance_km * 0.621371
+    
+    if distance_miles < 0.5:
+        return "Very close (within 0.5 miles)"
+    elif distance_miles < 1:
+        return "Within 1 mile"
+    elif distance_miles < 2:
+        return "Within 2 miles"
+    elif distance_miles < 5:
+        return "Within 5 miles"
+    elif distance_miles < 10:
+        return "Within 10 miles"
+    elif distance_miles < 25:
+        return "Within 25 miles"
+    else:
+        return f"{int(distance_miles)} miles away"
+
+def format_distance(distance_km: float) -> str:
+    """格式化距离显示"""
+    distance_miles = distance_km * 0.621371
+    if distance_miles < 0.1:
+        return f"{int(distance_miles * 5280)} ft"
+    elif distance_miles < 1:
+        return f"{distance_miles:.2f} miles"
+    elif distance_miles < 10:
+        return f"{distance_miles:.1f} miles"
+    else:
+        return f"{int(distance_miles)} miles"
 
 @router.post(
     "/",
@@ -145,7 +180,12 @@ async def list_items(
     - 价格范围: min_price, max_price
     - 分类: category
     - 地理位置: lat, lng, radius (km)
-    - 排序: sort_by (price/created_at), sort_order (asc/desc)
+    - 排序: sort_by (price/created_at/distance), sort_order (asc/desc)
+    
+    当提供 lat/lng 时，返回结果会包含：
+    - distance: 距离（km）
+    - distance_display: 格式化距离
+    - location_fuzzy: 模糊位置描述
     """
     # 参数验证
     if sort_by and sort_by not in VALID_SORT_FIELDS:
@@ -202,7 +242,16 @@ async def list_items(
         )
     
     try:
-        query = select(Item)
+        # 如果有地理位置参数，计算距离并排序
+        if lat is not None and lng is not None:
+            # 计算距离的表达式
+            point = func.ST_GeogFromText(f"POINT({lng} {lat})")
+            distance_expr = func.ST_Distance(Item.location, point) / 1000  # 转换为 km
+            
+            # 构建查询，包含距离
+            query = select(Item, distance_expr.label('distance'))
+        else:
+            query = select(Item)
         
         # 关键词搜索
         if keyword:
@@ -225,39 +274,73 @@ async def list_items(
         # 地理位置筛选 (PostGIS)
         if lat is not None and lng is not None and radius is not None:
             # 使用 PostGIS ST_DWithin 计算距离
-            point = f"POINT({lng} {lat})"
+            point = func.ST_GeogFromText(f"POINT({lng} {lat})")
             query = query.where(
                 func.ST_DWithin(
                     Item.location,
-                    func.ST_GeogFromText(point),
+                    point,
                     radius * 1000  # 转换为米
                 )
             )
         
         # 排序逻辑
-        # 默认按创建时间倒序
-        order_column = Item.created_at
-        
-        # 支持按价格或时间排序
-        if sort_by == "price":
-            order_column = Item.price
-        elif sort_by == "created_at":
-            order_column = Item.created_at
-        
-        # 排序方向
-        sort_order_lower = sort_order.lower() if sort_order else "desc"
-        if sort_order_lower == "asc":
-            query = query.order_by(order_column.asc())
+        if lat is not None and lng is not None and sort_by == "distance":
+            # 按距离排序
+            sort_order_lower = sort_order.lower() if sort_order else "asc"
+            if sort_order_lower == "desc":
+                query = query.order_by(distance_expr.desc())
+            else:
+                query = query.order_by(distance_expr.asc())
         else:
-            query = query.order_by(order_column.desc())
+            # 默认按创建时间或价格排序
+            order_column = Item.created_at
+            if sort_by == "price":
+                order_column = Item.price
+            elif sort_by == "created_at":
+                order_column = Item.created_at
+            
+            # 排序方向
+            sort_order_lower = sort_order.lower() if sort_order else "desc"
+            if sort_order_lower == "asc":
+                query = query.order_by(order_column.asc())
+            else:
+                query = query.order_by(order_column.desc())
         
         # 分页
         query = query.offset(skip).limit(limit)
         
         result = await db.execute(query)
-        items = result.scalars().all()
         
-        return items
+        # 处理结果
+        items_with_distance = []
+        if lat is not None and lng is not None:
+            # 有距离信息的结果
+            for row in result.all():
+                item = row[0]
+                distance = row[1]
+                # 添加距离信息到 item
+                item_dict = {
+                    "id": item.id,
+                    "title": item.title,
+                    "price": item.price,
+                    "description": item.description,
+                    "location_name": item.location_name,
+                    "category": item.category,
+                    "images": item.images,
+                    "user_id": item.user_id,
+                    "created_at": item.created_at,
+                    "latitude": item.latitude,
+                    "longitude": item.longitude,
+                    "distance": round(distance, 2) if distance else None,
+                    "distance_display": format_distance(distance) if distance else None,
+                    "location_fuzzy": get_fuzzy_location(distance) if distance else None
+                }
+                items_with_distance.append(item_dict)
+            return items_with_distance
+        else:
+            # 无距离信息的结果
+            items = result.scalars().all() if hasattr(result, 'scalars') else [row[0] for row in result.all()]
+            return items
         
     except SQLAlchemyError as e:
         logger.error(f"数据库查询错误: {str(e)}")

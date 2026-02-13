@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
-import { Loader2, MapPin, AlertCircle, Search } from 'lucide-react';
+import { Loader2, MapPin, AlertCircle, Search, Navigation } from 'lucide-react';
 import { API_ENDPOINTS } from '../lib/constants';
+import { getUserLocation, saveUserLocation, getLocationDisplay, formatDistance } from '../lib/geo';
 import SearchBar, { type SearchFilters } from './SearchBar';
 
 // 定义接口
@@ -16,6 +17,9 @@ interface Item {
   longitude: number;
   description?: string;
   category?: string;
+  distance?: number;
+  distance_display?: string;
+  location_fuzzy?: string;
 }
 
 // 每次请求的数量
@@ -24,10 +28,12 @@ const PAGE_SIZE = 12;
 // Fetcher 函数
 const fetchItems = async ({ 
   pageParam = 0, 
-  filters 
+  filters,
+  userLocation
 }: { 
   pageParam?: number; 
   filters: SearchFilters;
+  userLocation?: { lat: number; lng: number } | null;
 }): Promise<Item[]> => {
   const skip = pageParam * PAGE_SIZE;
   
@@ -40,6 +46,19 @@ const fetchItems = async ({
   if (filters.minPrice) params.append('min_price', filters.minPrice.toString());
   if (filters.maxPrice) params.append('max_price', filters.maxPrice.toString());
   if (filters.category) params.append('category', filters.category);
+  
+  // 添加地理位置参数
+  if (userLocation && filters.useLocation !== false) {
+    params.append('lat', userLocation.lat.toString());
+    params.append('lng', userLocation.lng.toString());
+    params.append('radius', (filters.radius || 5).toString()); // 默认 5km
+    
+    // 如果用户选择按距离排序
+    if (filters.sortBy === 'distance') {
+      params.append('sort_by', 'distance');
+      params.append('sort_order', 'asc');
+    }
+  }
   
   const response = await fetch(`${API_ENDPOINTS.items}/?${params}`);
   
@@ -85,9 +104,75 @@ function FeedContent() {
     minPrice: null,
     maxPrice: null,
     category: null,
+    useLocation: true,
+    radius: 5,
+    sortBy: 'distance',
   });
-
+  
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const { ref, inView } = useInView();
+
+  // 获取用户位置
+  const fetchUserLocation = useCallback(async () => {
+    setIsLocating(true);
+    setLocationError(null);
+    
+    try {
+      // 先尝试从 localStorage 获取
+      const saved = getUserLocation();
+      if (saved) {
+        setUserLocation(saved);
+        setIsLocating(false);
+        return;
+      }
+      
+      // 否则请求浏览器定位
+      if (!navigator.geolocation) {
+        setLocationError('Geolocation is not supported');
+        setIsLocating(false);
+        return;
+      }
+      
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const loc = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setUserLocation(loc);
+          saveUserLocation(loc.lat, loc.lng);
+          setIsLocating(false);
+        },
+        (error) => {
+          let msg = 'Failed to get location';
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              msg = 'Location permission denied. Please enable location services.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              msg = 'Location unavailable. Please check your GPS.';
+              break;
+            case error.TIMEOUT:
+              msg = 'Location request timed out.';
+              break;
+          }
+          setLocationError(msg);
+          setIsLocating(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } catch {
+      setLocationError('Failed to get location');
+      setIsLocating(false);
+    }
+  }, []);
+
+  // 组件加载时获取位置
+  useEffect(() => {
+    fetchUserLocation();
+  }, [fetchUserLocation]);
 
   const {
     data,
@@ -98,18 +183,19 @@ function FeedContent() {
     status,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['items', filters],
-    queryFn: ({ pageParam }) => fetchItems({ pageParam, filters }),
+    queryKey: ['items', filters, userLocation],
+    queryFn: ({ pageParam }) => fetchItems({ pageParam, filters, userLocation }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage.length < PAGE_SIZE) return undefined;
       return allPages.length;
     },
+    enabled: !!userLocation || filters.useLocation === false, // 等待位置获取完成
   });
 
   useEffect(() => {
     refetch();
-  }, [filters, refetch]);
+  }, [filters, userLocation, refetch]);
 
   useEffect(() => {
     if (inView && hasNextPage) {
@@ -143,7 +229,13 @@ function FeedContent() {
 
   return (
     <div className="space-y-6 pb-10">
-      <SearchBar onSearch={handleSearch} initialFilters={filters} />
+      <SearchBar 
+        onSearch={handleSearch} 
+        initialFilters={filters}
+        userLocation={userLocation}
+        onRefreshLocation={fetchUserLocation}
+        isLocating={isLocating}
+      />
 
       <div className="flex items-center justify-between px-2">
         <p className="text-sm text-gray-500">
@@ -197,8 +289,16 @@ function FeedContent() {
                     </h3>
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <MapPin className="w-3 h-3 flex-shrink-0" />
-                      <span className="truncate">{item.location_name || 'VT Campus'}</span>
+                      <span className="truncate">
+                        {item.location_fuzzy || item.location_name || 'VT Campus'}
+                      </span>
                     </div>
+                    {item.distance_display && (
+                      <div className="flex items-center gap-1 text-xs text-blue-500 mt-1">
+                        <Navigation className="w-3 h-3 flex-shrink-0" />
+                        <span>{item.distance_display}</span>
+                      </div>
+                    )}
                   </div>
                 </a>
               ))}
