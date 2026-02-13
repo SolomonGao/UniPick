@@ -3,7 +3,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useDropzone } from 'react-dropzone';
-import { Loader2, Upload, X } from 'lucide-react';
+import { Loader2, Upload, X, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_ENDPOINTS } from '../lib/constants';
 import { toast } from 'sonner';
@@ -176,6 +176,16 @@ export default function SellItemForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl mx-auto py-8">
+      {/* 返回按钮 */}
+      <div className="flex items-center gap-4">
+        <a 
+          href="/" 
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span className="text-sm font-medium">返回主页</span>
+        </a>
+      </div>
 
       {/* 图片上传区 */}
       <div className="space-y-2">

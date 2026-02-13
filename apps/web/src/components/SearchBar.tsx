@@ -30,11 +30,12 @@ const CATEGORIES = [
 ];
 
 const RADIUS_OPTIONS = [
-  { value: 1, label: '1 km' },
-  { value: 3, label: '3 km' },
-  { value: 5, label: '5 km' },
-  { value: 10, label: '10 km' },
-  { value: 25, label: '25 km' },
+  { value: 1, label: '1 mile' },
+  { value: 5, label: '5 miles' },
+  { value: 10, label: '10 miles' },
+  { value: 25, label: '25 miles' },
+  { value: 50, label: '50 miles' },
+  { value: 100, label: '100 miles' },
 ];
 
 const SORT_OPTIONS = [
@@ -54,9 +55,9 @@ export default function SearchBar({
   const [minPrice, setMinPrice] = useState(initialFilters?.minPrice?.toString() || '');
   const [maxPrice, setMaxPrice] = useState(initialFilters?.maxPrice?.toString() || '');
   const [category, setCategory] = useState(initialFilters?.category || '');
-  const [useLocation, setUseLocation] = useState(initialFilters?.useLocation !== false);
-  const [radius, setRadius] = useState(initialFilters?.radius || 5);
-  const [sortBy, setSortBy] = useState(initialFilters?.sortBy || 'distance');
+  const [useLocation, setUseLocation] = useState(initialFilters?.useLocation ?? false);
+  const [radius, setRadius] = useState(initialFilters?.radius || 10);
+  const [sortBy, setSortBy] = useState(initialFilters?.sortBy || 'created_at');
   const [showFilters, setShowFilters] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -77,21 +78,21 @@ export default function SearchBar({
     setMinPrice('');
     setMaxPrice('');
     setCategory('');
-    setUseLocation(true);
-    setRadius(5);
-    setSortBy('distance');
+    setUseLocation(false);
+    setRadius(10);
+    setSortBy('created_at');
     onSearch({
       keyword: '',
       minPrice: null,
       maxPrice: null,
       category: null,
-      useLocation: true,
-      radius: 5,
-      sortBy: 'distance',
+      useLocation: false,
+      radius: 10,
+      sortBy: 'created_at',
     });
   };
 
-  const hasActiveFilters = keyword || minPrice || maxPrice || category || !useLocation || radius !== 5 || sortBy !== 'distance';
+  const hasActiveFilters = keyword || minPrice || maxPrice || category || useLocation || radius !== 10 || sortBy !== 'created_at';
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-4">
@@ -211,9 +212,9 @@ export default function SearchBar({
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
               <MapPin className="w-4 h-4" />
-              搜索范围
+              搜索范围: {radius} miles
             </label>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -224,17 +225,22 @@ export default function SearchBar({
                 <span className="text-sm text-gray-600">使用我的位置</span>
               </label>
               {useLocation && (
-                <select
-                  value={radius}
-                  onChange={(e) => setRadius(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
-                >
-                  {RADIUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-2">
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    step="1"
+                    value={radius}
+                    onChange={(e) => setRadius(Number(e.target.value))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>1 mile</span>
+                    <span className="font-medium text-orange-600">{radius} miles</span>
+                    <span>100 miles</span>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -297,10 +303,10 @@ export default function SearchBar({
           {useLocation && (
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
               <MapPin className="w-3 h-3" />
-              {RADIUS_OPTIONS.find(r => r.value === radius)?.label}
+              Within {radius} miles
             </span>
           )}
-          {sortBy && sortBy !== 'distance' && (
+          {sortBy && sortBy !== 'created_at' && (
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm">
               {SORT_OPTIONS.find(s => s.value === sortBy)?.label}
             </span>

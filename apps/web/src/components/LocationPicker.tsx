@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Map, { Marker, NavigationControl, GeolocateControl } from 'react-map-gl/mapbox';
-import { MapPin, Search, X, Navigation } from 'lucide-react';
+import { MapPin, Search, X, Navigation, Map as MapIcon, Type } from 'lucide-react';
 import { MAPBOX_ACCESS_TOKEN } from '../lib/constants';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -42,6 +42,8 @@ export default function LocationPicker({
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState(true); // 控制是否显示地图
+  const [manualInput, setManualInput] = useState(locationName || '');
 
   // 反向地理编码：坐标 → 地址名称
   const reverseGeocode = useCallback(async (lat: number, lng: number) => {
@@ -63,9 +65,12 @@ export default function LocationPicker({
   }, []);
 
   // 搜索地址
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim() || !MAPBOX_ACCESS_TOKEN) return;
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!searchQuery.trim() || !MAPBOX_ACCESS_TOKEN) {
+      setError('Please enter a location to search');
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -75,6 +80,11 @@ export default function LocationPicker({
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?access_token=${MAPBOX_ACCESS_TOKEN}&proximity=-80.4139,37.2294&limit=1`
       );
+      
+      if (!response.ok) {
+        throw new Error(`Search failed: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (data.features && data.features.length > 0) {
@@ -83,15 +93,24 @@ export default function LocationPicker({
         
         setViewState({ latitude: lat, longitude: lng, zoom: 16 });
         setMarkerPosition({ lat, lng });
+        setManualInput(name);
         onChange(lat, lng, name);
       } else {
         setError('Location not found. Please try a different search term.');
       }
-    } catch (err) {
-      setError('Search failed. Please try again.');
+    } catch (err: any) {
+      console.error('Search error:', err);
+      setError(err.message || 'Search failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // 手动输入位置
+  const handleManualInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setManualInput(value);
+    onChange(latitude, longitude, value);
   };
 
   // 地图点击移动标记
@@ -100,6 +119,7 @@ export default function LocationPicker({
     setMarkerPosition({ lat, lng });
     
     const name = await reverseGeocode(lat, lng);
+    setManualInput(name);
     onChange(lat, lng, name);
   }, [onChange, reverseGeocode]);
 
@@ -109,6 +129,7 @@ export default function LocationPicker({
     setMarkerPosition({ lat, lng });
     
     const name = await reverseGeocode(lat, lng);
+    setManualInput(name);
     onChange(lat, lng, name);
   }, [onChange, reverseGeocode]);
 
@@ -118,14 +139,17 @@ export default function LocationPicker({
     setMarkerPosition({ lat, lng });
     
     const name = await reverseGeocode(lat, lng);
+    setManualInput(name);
     onChange(lat, lng, name);
   }, [onChange, reverseGeocode]);
 
-  // 如果没有配置 Mapbox token，显示降级界面
+  // 如果没有配置 Mapbox token，显示文本输入
   if (!MAPBOX_ACCESS_TOKEN) {
     return (
       <div className="space-y-3">
-        <label className="block text-sm font-medium text-gray-700">交易地点</label>
+        <label className="block text-sm font-medium text-gray-700">
+          交易地点 <span className="text-red-500">*</span>
+        </label>
         <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div className="flex items-center gap-2 text-amber-600 mb-2">
             <MapPin className="w-4 h-4" />
@@ -133,8 +157,8 @@ export default function LocationPicker({
           </div>
           <input
             type="text"
-            value={locationName}
-            onChange={(e) => onChange(latitude, longitude, e.target.value)}
+            value={manualInput}
+            onChange={handleManualInput}
             placeholder="例如: VT Library, Blacksburg"
             className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
           />
@@ -152,71 +176,118 @@ export default function LocationPicker({
         交易地点 <span className="text-red-500">*</span>
       </label>
       
-      {/* 搜索框 */}
-      <form onSubmit={handleSearch} className="relative">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search location (e.g., Squires Student Center)"
-          className="w-full pl-10 pr-20 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-        />
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      {/* 切换输入方式 */}
+      <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
         <button
-          type="submit"
-          disabled={isLoading || !searchQuery.trim()}
-          className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-orange-600 text-white text-sm rounded-md hover:bg-orange-700 disabled:opacity-50 transition-colors"
+          type="button"
+          onClick={() => setShowMap(true)}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+            showMap 
+              ? 'bg-white text-orange-600 shadow-sm' 
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
         >
-          {isLoading ? '...' : 'Search'}
+          <MapIcon className="w-4 h-4" />
+          地图选点
         </button>
-      </form>
-
-      {error && (
-        <div className="text-red-500 text-sm flex items-center gap-1">
-          <X className="w-4 h-4" />
-          {error}
-        </div>
-      )}
-
-      {/* 地图容器 */}
-      <div className="relative h-[300px] rounded-xl overflow-hidden border border-gray-200">
-        <Map
-          {...viewState}
-          onMove={(evt) => setViewState(evt.viewState)}
-          onClick={handleMapClick}
-          mapStyle="mapbox://styles/mapbox/streets-v12"
-          mapboxAccessToken={MAPBOX_ACCESS_TOKEN}
-          style={{ width: '100%', height: '100%' }}
+        <button
+          type="button"
+          onClick={() => setShowMap(false)}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+            !showMap 
+              ? 'bg-white text-orange-600 shadow-sm' 
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
         >
-          <NavigationControl position="top-right" />
-          <GeolocateControl 
-            position="top-right" 
-            onGeolocate={handleGeolocate}
-            trackUserLocation
-          />
-          
-          <Marker
-            latitude={markerPosition.lat}
-            longitude={markerPosition.lng}
-            draggable
-            onDragEnd={handleMarkerDragEnd}
-            anchor="bottom"
-          >
-            <div className="relative">
-              <MapPin className="w-8 h-8 text-orange-600 drop-shadow-lg" fill="currentColor" />
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-orange-600 rounded-full opacity-50" />
-            </div>
-          </Marker>
-        </Map>
-
-        {/* 提示文字 */}
-        <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg text-xs text-gray-600 shadow-sm">
-          <div className="flex items-center gap-1">
-            <Navigation className="w-3 h-3" />
-            Click map or drag pin to set location. Click 📍 to use your current position.
-          </div>
-        </div>
+          <Type className="w-4 h-4" />
+          文字输入
+        </button>
       </div>
+
+      {showMap ? (
+        <>
+          {/* 搜索框 */}
+          <form onSubmit={handleSearch} className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search location (e.g., Squires Student Center)"
+              className="w-full pl-10 pr-24 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <button
+              type="button"
+              onClick={() => handleSearch()}
+              disabled={isLoading || !searchQuery.trim()}
+              className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-orange-600 text-white text-sm rounded-md hover:bg-orange-700 disabled:opacity-50 transition-colors"
+            >
+              {isLoading ? '...' : 'Search'}
+            </button>
+          </form>
+
+          {error && (
+            <div className="text-red-500 text-sm flex items-center gap-1 bg-red-50 p-2 rounded-lg">
+              <X className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          {/* 地图容器 */}
+          <div className="relative h-[300px] rounded-xl overflow-hidden border border-gray-200">
+            <Map
+              {...viewState}
+              onMove={(evt) => setViewState(evt.viewState)}
+              onClick={handleMapClick}
+              mapStyle="mapbox://styles/mapbox/streets-v12"
+              mapboxAccessToken={MAPBOX_ACCESS_TOKEN}
+              style={{ width: '100%', height: '100%' }}
+            >
+              <NavigationControl position="top-right" />
+              <GeolocateControl 
+                position="top-right" 
+                onGeolocate={handleGeolocate}
+                trackUserLocation
+              />
+              
+              <Marker
+                latitude={markerPosition.lat}
+                longitude={markerPosition.lng}
+                draggable
+                onDragEnd={handleMarkerDragEnd}
+                anchor="bottom"
+              >
+                <div className="relative">
+                  <MapPin className="w-8 h-8 text-orange-600 drop-shadow-lg" fill="currentColor" />
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-orange-600 rounded-full opacity-50" />
+                </div>
+              </Marker>
+            </Map>
+
+            {/* 提示文字 */}
+            <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg text-xs text-gray-600 shadow-sm">
+              <div className="flex items-center gap-1">
+                <Navigation className="w-3 h-3" />
+                Click map or drag pin to set location. Click 📍 to use your current position.
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* 文字输入模式 */}
+          <input
+            type="text"
+            value={manualInput}
+            onChange={handleManualInput}
+            placeholder="例如: VT Library, Squires Student Center, Blacksburg"
+            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+          />
+          <p className="text-xs text-gray-500">
+            请尽可能详细地描述交易地点，方便买家找到你。
+          </p>
+        </>
+      )}
 
       {/* 已选位置显示 */}
       {locationName && (

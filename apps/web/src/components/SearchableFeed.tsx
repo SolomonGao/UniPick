@@ -104,9 +104,9 @@ function FeedContent() {
     minPrice: null,
     maxPrice: null,
     category: null,
-    useLocation: true,
-    radius: 5,
-    sortBy: 'distance',
+    useLocation: false,  // 默认不使用位置搜索
+    radius: 10,  // 默认 10 miles
+    sortBy: 'created_at',  // 默认按时间排序
   });
   
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
