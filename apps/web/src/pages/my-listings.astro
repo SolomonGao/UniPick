@@ -7,8 +7,8 @@ import MyListingsItem from '../components/MyListingsItem';
 
 <Layout title="我的发布 - UniPick">
   <Providers client:only="react">
-    <AuthGuard client:only="react" redirectTo="/login">
-      <MyListingsItem client:only="react" />
+    <AuthGuard redirectTo="/login">
+      <MyListingsItem />
     </AuthGuard>
   </Providers>
 </Layout>

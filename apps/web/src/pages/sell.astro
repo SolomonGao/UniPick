@@ -7,8 +7,8 @@ import SellItemForm from '../components/SellItemForm';
 
 <Layout title="发布商品 - UniPick">
   <Providers client:only="react">
-    <AuthGuard client:only="react" redirectTo="/login">
-      <SellItemForm client:only="react" />
+    <AuthGuard redirectTo="/login">
+      <SellItemForm />
     </AuthGuard>
   </Providers>
 </Layout>
