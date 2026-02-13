@@ -8,12 +8,14 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  error: string | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
   isAuthenticated: false,
+  error: null,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -22,27 +24,73 @@ export const useAuth = () => useContext(AuthContext);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // 初始化检查 Session
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      setIsLoading(false);
-    });
+    let mounted = true;
+    
+    const checkAuth = async () => {
+      try {
+        // 先尝试获取 session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          if (mounted) {
+            setError(sessionError.message);
+            setIsLoading(false);
+          }
+          return;
+        }
+        
+        if (session?.user) {
+          if (mounted) {
+            setUser(session.user);
+            setIsLoading(false);
+          }
+        } else {
+          // 没有session，尝试getUser
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          
+          if (userError) {
+            console.error('Get user error:', userError);
+          }
+          
+          if (mounted) {
+            setUser(user);
+            setIsLoading(false);
+          }
+        }
+      } catch (err: any) {
+        console.error('Auth check error:', err);
+        if (mounted) {
+          setError(err?.message || '认证检查失败');
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    checkAuth();
 
     // 监听登录状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      if (mounted) {
+        setUser(session?.user ?? null);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
     <AuthContext.Provider value={{ 
       user, 
       isLoading, 
-      isAuthenticated: !!user 
+      isAuthenticated: !!user,
+      error
     }}>
       {children}
     </AuthContext.Provider>
@@ -52,8 +100,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 // 路由守卫组件
 interface AuthGuardProps {
   children: React.ReactNode;
-  fallback?: React.ReactNode; // 未登录时的显示内容
-  redirectTo?: string; // 未登录时跳转路径
+  fallback?: React.ReactNode;
+  redirectTo?: string;
 }
 
 export function AuthGuard({ 
@@ -61,12 +109,11 @@ export function AuthGuard({
   fallback,
   redirectTo = '/login'
 }: AuthGuardProps) {
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, error } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && redirectTo) {
-      // 延迟跳转，让用户看到提示
       const timer = setTimeout(() => {
         window.location.href = redirectTo;
       }, 2000);
@@ -79,7 +126,33 @@ export function AuthGuard({
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-orange-600 mx-auto mb-4" />
+          <p className="text-gray-500">正在检查登录状态...\u003c/p\u003e
+        </div>
+      </div>
+    );
+  }
+
+  // 出错
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full mx-4">
+          <div className="bg-white rounded-2xl shadow-lg border border-red-100 p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">出错了</h2>
+            <p className="text-gray-500 mb-6">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-xl transition-colors"
+            >
+              刷新页面
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -148,7 +221,7 @@ export function GuestGuard({
   }
 
   if (isAuthenticated) {
-    return null; // 跳转中
+    return null;
   }
 
   return <>{children}</>;
