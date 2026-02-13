@@ -9,6 +9,7 @@ class ItemBase(BaseModel):
     price: float = Field(..., gt=0) # 价格必须大于 0
     description: Optional[str] = None
     location_name: Optional[str] = None
+    category: Optional[str] = None  # 商品分类
     
     # 经纬度输入 (前端传给后端)
     latitude: float = Field(..., ge=-90, le=90)

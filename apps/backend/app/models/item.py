@@ -20,6 +20,9 @@ class Item(Base):
     location = Column(Geography(geometry_type='POINT', srid=4326))
     location_name = Column(String)
     
+    # 商品分类
+    category = Column(String, nullable=True)
+    
     # 创建时间
     created_at = Column(DateTime, default=datetime.utcnow, server_default=text('NOW()'))
     

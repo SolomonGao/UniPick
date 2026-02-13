@@ -73,9 +73,9 @@ async def list_items(
     if max_price is not None:
         query = query.where(Item.price <= max_price)
     
-    # 分类筛选 (需要先添加 category 字段到模型)
-    # if category:
-    #     query = query.where(Item.category == category)
+    # 分类筛选
+    if category:
+        query = query.where(Item.category == category)
     
     # 地理位置筛选 (PostGIS)
     if lat is not None and lng is not None and radius is not None:

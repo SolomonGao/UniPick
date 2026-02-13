@@ -4,6 +4,8 @@ from app.core.config import settings
 
 Base = declarative_base()
 
+# 导出 DATABASE_URL 供 Alembic 使用
+DATABASE_URL = settings.DATABASE_URL
 
 # 2. 创建异步引擎
 # 注意：Supabase 的连接串通常是 postgres://... 需要改成 postgresql+asyncpg://...
