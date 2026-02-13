@@ -1,11 +1,11 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Providers from '../components/Providers';
-import MyListingsItem from '../components/MyListingsItem';
+import ManageItemsplace from '../components/ManageItemsplace';
 ---
 
 <Layout title="我的发布 - UniPick">
-  <Providers client:only="react">
-    <MyListingsItem client:only="react" />
+  <Providers client:load>
+    <ManageItemsplace client:load />
   </Providers>
 </Layout>
