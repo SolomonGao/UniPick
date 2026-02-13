@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useDropzone } from 'react-dropzone';
-import { Loader2, Upload, X, ArrowLeft } from 'lucide-react';
+import { Loader2, Upload, X, ArrowLeft, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { API_ENDPOINTS } from '../lib/constants';
 import { toast } from 'sonner';
@@ -34,7 +34,11 @@ type ItemFormInputs = z.infer<typeof itemSchema>;
 
 export default function SellItemForm() {
   const [images, setImages] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [itemId, setItemId] = useState<number | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const {
     register,
@@ -58,6 +62,47 @@ export default function SellItemForm() {
   const longitude = watch('longitude');
   const locationName = watch('location_name');
 
+  // 检查是否是编辑模式
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit');
+    if (editId) {
+      setItemId(parseInt(editId));
+      setIsEditMode(true);
+      loadItemData(parseInt(editId));
+    }
+  }, []);
+
+  // 加载商品数据
+  const loadItemData = async (id: number) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_ENDPOINTS.items}/${id}`);
+      if (!response.ok) {
+        throw new Error('加载商品数据失败');
+      }
+      const item = await response.json();
+      
+      // 填充表单
+      setValue('title', item.title);
+      setValue('price', item.price);
+      setValue('description', item.description || '');
+      setValue('category', item.category || '');
+      setValue('location_name', item.location_name);
+      setValue('latitude', item.latitude);
+      setValue('longitude', item.longitude);
+      
+      // 设置现有图片
+      if (item.images && item.images.length > 0) {
+        setExistingImages(item.images);
+      }
+    } catch (error: any) {
+      toast.error(error.message || '加载商品数据失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 处理位置变化
   const handleLocationChange = (lat: number, lng: number, name: string) => {
     setValue('latitude', lat);
@@ -70,17 +115,28 @@ export default function SellItemForm() {
     accept: { 'image/*': [] },
     maxFiles: 4,
     onDrop: (acceptedFiles) => {
-      setImages((prev) => [...prev, ...acceptedFiles].slice(0, 4));
+      const totalImages = existingImages.length + images.length + acceptedFiles.length;
+      if (totalImages > 4) {
+        toast.error('最多只能上传4张图片');
+        return;
+      }
+      setImages((prev) => [...prev, ...acceptedFiles].slice(0, 4 - existingImages.length));
     },
   });
 
   // 移除待上传图片
-  const removeImage = (index: number) => {
+  const removeNewImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // 移除已有图片
+  const removeExistingImage = (index: number) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const onSubmit = async (data: ItemFormInputs) => {
-    if (images.length === 0) {
+    const totalImages = existingImages.length + images.length;
+    if (totalImages === 0) {
       toast.error("请至少上传一张图片");
       return;
     }
@@ -89,14 +145,13 @@ export default function SellItemForm() {
 
     try {
       setUploading(true);
-      const imageUrls: string[] = [];
+      const newImageUrls: string[] = [];
 
-      // 1. 逐个上传图片到 Supabase Storage
+      // 1. 上传新图片到 Supabase Storage
       for (const file of images) {
-        // 生成唯一文件名: user_id/timestamp_random.jpg
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `${fileName}`; // 简单起见直接放在根目录，或者你可以加 userId 前缀
+        const filePath = `${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('item-images')
@@ -106,16 +161,14 @@ export default function SellItemForm() {
 
         uploadedPaths.push(filePath);
 
-        // 获取 Public URL
         const { data: { publicUrl } } = supabase.storage
           .from('item-images')
           .getPublicUrl(filePath);
 
-        imageUrls.push(publicUrl);
+        newImageUrls.push(publicUrl);
       }
 
-      // 2. 准备发给后端的数据
-      // 获取当前 Session 用于 Header
+      // 2. 获取当前 Session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error("请先登录");
@@ -123,36 +176,53 @@ export default function SellItemForm() {
         return;
       }
 
+      // 3. 合并图片：已有图片 + 新上传图片
+      const allImages = [...existingImages, ...newImageUrls];
+
       const payload = {
         title: data.title,
         price: data.price,
         description: data.description,
         category: data.category,
         location_name: data.location_name,
-        images: imageUrls,
+        images: allImages,
         latitude: data.latitude,
         longitude: data.longitude
       };
 
-      // 3. 调用 FastAPI 后端
-      const response = await fetch(API_ENDPOINTS.items + '/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}` // 👈 关键：带上 JWT
-        },
-        body: JSON.stringify(payload)
-      });
+      // 4. 调用后端 API
+      let response;
+      if (isEditMode && itemId) {
+        // 编辑模式：使用 PUT
+        response = await fetch(`${API_ENDPOINTS.items}/${itemId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // 新增模式：使用 POST
+        response = await fetch(API_ENDPOINTS.items + '/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      }
 
       if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.detail || "发布失败");
+        throw new Error(errData.detail || (isEditMode ? "更新失败" : "发布失败"));
       }
 
-      toast.success("发布成功！");
+      toast.success(isEditMode ? "更新成功！" : "发布成功！");
       reset();
       setImages([]);
-      // 跳转回首页或详情页
+      setExistingImages([]);
       window.location.href = "/";
 
     } catch (error: any) {
@@ -160,7 +230,6 @@ export default function SellItemForm() {
       toast.error(error.message || "Something went wrong");
 
       if (uploadedPaths.length > 0) {
-        // 清理已上传但发布失败的图片
         try {
           await supabase.storage
             .from('item-images')
@@ -174,6 +243,14 @@ export default function SellItemForm() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl mx-auto py-8">
       {/* 返回按钮 */}
@@ -185,27 +262,63 @@ export default function SellItemForm() {
           <ArrowLeft className="w-5 h-5" />
           <span className="text-sm font-medium">返回主页</span>
         </a>
+        {isEditMode && (
+          <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
+            编辑模式
+          </span>
+        )}
       </div>
+
+      {/* 标题 */}
+      <h1 className="text-2xl font-bold text-gray-900">
+        {isEditMode ? '编辑商品' : '发布新商品'}
+      </h1>
 
       {/* 图片上传区 */}
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">商品图片 (最多4张)</label>
-        <div {...getRootProps()} className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 cursor-pointer transition-colors">
-          <input {...getInputProps()} />
-          <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
-          <p className="text-sm text-gray-500">点击或拖拽上传图片</p>
-        </div>
+        <label className="block text-sm font-medium text-gray-700">
+          商品图片 (最多4张，已有 {existingImages.length} 张)
+        </label>
+        
+        {/* 已有图片预览 */}
+        {existingImages.length > 0 && (
+          <div className="grid grid-cols-4 gap-4 mb-4">
+            {existingImages.map((url, index) => (
+              <div key={`existing-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
+                <img src={url} alt={`existing-${index}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeExistingImage(index)}
+                  className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {/* 新图片上传 */}
+        {existingImages.length + images.length < 4 && (
+          <div {...getRootProps()} className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 cursor-pointer transition-colors">
+            <input {...getInputProps()} />
+            <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
+            <p className="text-sm text-gray-500">
+              {isEditMode ? '点击或拖拽添加更多图片' : '点击或拖拽上传图片'}
+            </p>
+          </div>
+        )}
 
-        {/* 图片预览 */}
+        {/* 新图片预览 */}
         {images.length > 0 && (
           <div className="grid grid-cols-4 gap-4 mt-4">
             {images.map((file, index) => (
-              <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
+              <div key={`new-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
                 <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover" />
                 <button
                   type="button"
-                  onClick={() => removeImage(index)}
-                  className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => removeNewImage(index)}
+                  className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -281,7 +394,12 @@ export default function SellItemForm() {
         className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 flex justify-center gap-2"
       >
         {(isSubmitting || uploading) && <Loader2 className="animate-spin" />}
-        {uploading ? "正在上传图片..." : "发布商品"}
+        {uploading 
+          ? "正在上传图片..." 
+          : isEditMode 
+            ? "保存修改" 
+            : "发布商品"
+        }
       </button>
     </form>
   );
