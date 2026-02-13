@@ -7,9 +7,9 @@ import Marketplace from "../components/Marketplace";
 
 <Layout title="UniPick - VT Marketplace">
   <main class="max-w-7xl mx-auto px-4 pt-6">
-    <Providers client:load>
+    <Providers client:only="react">
       <!-- <SearchableFeed client:load /> -->
-      <Marketplace client:load />
+      <Marketplace/>
     </Providers>
   </main>
 </Layout>
