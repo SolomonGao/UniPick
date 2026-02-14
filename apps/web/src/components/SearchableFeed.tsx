@@ -95,7 +95,7 @@ const ItemCard = memo(({
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
           {/* 价格标签 - 玻璃拟态 */}
-          <div className="absolute top-3 right-3 glass px-3 py-1.5 rounded-full">
+          <div className="absolute top-3 right-3 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg border border-gray-200/50 dark:border-gray-700/50">
             <span className="text-sm font-bold text-gray-900 dark:text-white">
               ${item.price}
             </span>
@@ -110,7 +110,7 @@ const ItemCard = memo(({
 
           {/* 分类标签 */}
           {item.category && !isMine && (
-            <div className="absolute top-3 left-3 badge badge-primary capitalize">
+            <div className="absolute top-3 left-3 bg-orange-500/90 dark:bg-orange-600/90 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg backdrop-blur-sm">
               {item.category}
             </div>
           )}
