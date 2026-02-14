@@ -267,40 +267,8 @@ async def list_items(
         )
     
     try:
-        # 子查询：计算每个商品的收藏数
-        favorite_count_subquery = (
-            select(
-                Favorite.item_id.label('fav_item_id'),
-                func.count(Favorite.id).label('fav_count')
-            )
-            .group_by(Favorite.item_id)
-            .subquery()
-        )
-        
-        # 如果有地理位置参数，计算距离并排序
-        if lat is not None and lng is not None:
-            # 计算距离的表达式
-            point = func.ST_GeogFromText(f"POINT({lng} {lat})")
-            distance_expr = func.ST_Distance(Item.location, point) / 1000  # 转换为 km
-            
-            # 构建查询，包含距离和收藏数
-            query = select(
-                Item, 
-                distance_expr.label('distance'),
-                func.coalesce(favorite_count_subquery.c.fav_count, 0).label('favorite_count')
-            ).outerjoin(
-                favorite_count_subquery,
-                Item.id == favorite_count_subquery.c.fav_item_id
-            )
-        else:
-            # 构建查询，包含收藏数
-            query = select(
-                Item,
-                func.coalesce(favorite_count_subquery.c.fav_count, 0).label('favorite_count')
-            ).outerjoin(
-                favorite_count_subquery,
-                Item.id == favorite_count_subquery.c.fav_item_id
-            )
+        # 先获取商品列表（不含收藏数，避免子查询问题）
+        query = select(Item)
         
         # 关键词搜索
         if keyword:
@@ -343,6 +311,8 @@ async def list_items(
         # 排序逻辑
         if lat is not None and lng is not None and sort_by == "distance":
             # 按距离排序
+            point = func.ST_GeogFromText(f"POINT({lng} {lat})")
+            distance_expr = func.ST_Distance(Item.location, point) / 1000
             sort_order_lower = sort_order.lower() if sort_order else "asc"
             if sort_order_lower == "desc":
                 query = query.order_by(distance_expr.desc())
@@ -367,23 +337,37 @@ async def list_items(
         query = query.offset(skip).limit(limit)
         
         result = await db.execute(query)
+        items = result.scalars().all()
+        
+        # 获取收藏数（单独查询避免子查询问题）
+        item_ids = [item.id for item in items]
+        if item_ids:
+            fav_query = select(
+                Favorite.item_id,
+                func.count(Favorite.id).label('fav_count')
+            ).where(Favorite.item_id.in_(item_ids)).group_by(Favorite.item_id)
+            fav_result = await db.execute(fav_query)
+            fav_counts = {row.item_id: row.fav_count for row in fav_result.all()}
+        else:
+            fav_counts = {}
         
         # 处理结果
         items_with_distance = []
         if lat is not None and lng is not None:
-            # 有距离信息的结果
-            for row in result.all():
-                item = row[0]
-                distance = row[1]
-                favorite_count = row[2] if len(row) > 2 else 0
+            # 有地理位置，计算距离
+            for item in items:
+                # 计算距离
+                point = func.ST_GeogFromText(f"POINT({lng} {lat})")
+                distance_query = select(func.ST_Distance(Item.location, point) / 1000).where(Item.id == item.id)
+                distance_result = await db.execute(distance_query)
+                distance = distance_result.scalar() or 0
                 
-                # 处理位置保密：如果保密且不是自己发布的，只显示邮政编码
+                # 处理位置保密
                 location_name = item.location_name
                 location_fuzzy = None
                 if item.is_location_private:
                     location_fuzzy = extract_zip_code(location_name)
                 
-                # 添加距离信息和统计到 item
                 item_dict = {
                     "id": item.id,
                     "title": item.title,
@@ -397,22 +381,19 @@ async def list_items(
                     "latitude": item.latitude,
                     "longitude": item.longitude,
                     "view_count": item.view_count or 0,
-                    "favorite_count": favorite_count or 0,
+                    "favorite_count": fav_counts.get(item.id, 0),
                     "is_location_private": item.is_location_private,
-                    "distance": round(distance, 2) if distance else None,
-                    "distance_display": format_distance(distance) if distance else None,
+                    "distance": round(distance, 2),
+                    "distance_display": format_distance(distance),
                     "location_fuzzy": location_fuzzy
                 }
                 items_with_distance.append(item_dict)
             return items_with_distance
         else:
             # 无距离信息的结果
-            items = []
-            for row in result.all():
-                item = row[0]
-                favorite_count = row[1] if len(row) > 1 else 0
-                
-                # 处理位置保密：只显示邮政编码
+            items_list = []
+            for item in items:
+                # 处理位置保密
                 location_name = item.location_name
                 location_fuzzy = None
                 if item.is_location_private:
@@ -431,12 +412,12 @@ async def list_items(
                     "latitude": item.latitude,
                     "longitude": item.longitude,
                     "view_count": item.view_count or 0,
-                    "favorite_count": favorite_count or 0,
+                    "favorite_count": fav_counts.get(item.id, 0),
                     "is_location_private": item.is_location_private,
                     "location_fuzzy": location_fuzzy
                 }
-                items.append(item_dict)
-            return items
+                items_list.append(item_dict)
+            return items_list
         
     except SQLAlchemyError as e:
         logger.error(f"数据库查询错误: {str(e)}")
