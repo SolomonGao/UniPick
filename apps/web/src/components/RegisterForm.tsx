@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '../lib/supabase';
-import { Loader2, Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle, Shield } from 'lucide-react';
+import { Loader2, ArrowUpRight, Check } from 'lucide-react';
 import '../styles/design-system.css';
 
 const registerSchema = z.object({
@@ -23,15 +23,13 @@ type RegisterFormInputs = z.infer<typeof registerSchema>;
 export default function RegisterForm() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const {
     register,
     handleSubmit,
     watch,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<RegisterFormInputs>({
     resolver: zodResolver(registerSchema),
   });
@@ -48,227 +46,158 @@ export default function RegisterForm() {
     setServerError(null);
     setIsLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-    });
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+      });
 
-    if (error) {
-      setServerError(error.message);
+      if (error) {
+        setServerError(error.message);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsSuccess(true);
       setIsLoading(false);
-      return;
+    } catch {
+      setServerError("注册失败，请稍后重试");
+      setIsLoading(false);
     }
-
-    setIsSuccess(true);
-    setIsLoading(false);
   };
-
-  const loading = isSubmitting || isLoading;
 
   if (isSuccess) {
     return (
-      <div className="w-full max-w-md mx-auto text-center animate-fade-in">
-        <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-200">
-          <CheckCircle className="w-10 h-10 text-white" />
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-          注册成功！
-        </h2>
-        <p className="text-gray-600 dark:text-gray-300 mb-2">
-          请前往你的邮箱查收验证邮件
-        </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          点击邮件中的链接完成验证后即可登录
-        </p>
-        
-        <div className="mt-8 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
-          <p className="text-sm text-green-700 dark:text-green-400">
-            📧 邮件可能需要几分钟到达，请检查垃圾邮件文件夹
-          </p>
+      <div className="w-full max-w-sm mx-auto text-center py-12">
+        <div className="w-16 h-16 mx-auto mb-8 relative">
+          <div className="absolute inset-0 border border-neutral-300 dark:border-neutral-700" />
+          <div className="absolute inset-2 border border-black dark:border-white flex items-center justify-center">
+            <Check className="w-6 h-6" />
+          </div>
         </div>
         
-        <a 
-          href="/login" 
-          className="mt-6 inline-flex items-center gap-2 text-orange-600 hover:text-orange-500 font-semibold transition-colors"
-        >
-          前往登录页面
-          <ArrowRight className="w-4 h-4" />
+        <h2 className="text-2xl font-bold mb-2">注册成功</h2>
+        <p className="text-neutral-500 text-sm mb-8">请查收验证邮件</p>
+        
+        <a href="/login" className="inline-flex items-center gap-2 text-sm font-medium hover:underline"
+003e
+          前往登录 →
         </a>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      {/* 标题区域 */}
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-orange-200">
-          <Shield className="w-8 h-8 text-white" />
+    <div className="w-full max-w-sm mx-auto">
+      {/* 建筑标题 */}
+      <div className="mb-12 relative">
+        <div className="absolute -top-4 left-0 right-0 h-px bg-neutral-300 dark:bg-neutral-700" />
+        <div className="flex items-baseline justify-between">
+          <h1 className="text-4xl font-bold tracking-tight">
+            REGISTER
+          </h1>
+          <span className="text-[10px] font-mono text-neutral-400 tracking-widest">
+            AUTH // 02
+          </span>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          创建账号
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400">
-          加入 UniPick，开启校园二手交易
-        </p>
+        <div className="mt-2 text-sm text-neutral-500 tracking-wide">创建新账号</div>
+        
+        <div className="absolute -bottom-4 left-0 w-16 h-px bg-black dark:bg-white" />
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        {/* 邮箱输入 */}
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            邮箱地址
-          </label>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        {/* 邮箱 */}
+        <div className="space-y-3">
+          <label className="text-[10px] font-semibold tracking-[0.2em] uppercase text-neutral-400">Email</label>
           <div className="relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-              <Mail className="w-5 h-5" />
-            </div>
+            <div className="absolute left-0 top-0 bottom-0 w-px bg-neutral-300 dark:bg-neutral-700" />
             <input
               {...register('email')}
               type="email"
-              placeholder="yourname@example.com"
-              disabled={loading}
-              className={`w-full h-12 pl-12 pr-4 bg-white dark:bg-gray-800 border-2 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 transition-all duration-200 focus:outline-none ${
-                errors.email 
-                  ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-500/10' 
-                  : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10'
-              }`}
+              placeholder="name@example.com"
+              disabled={isLoading}
+              className="w-full h-14 pl-6 pr-4 bg-transparent border-0 border-b border-neutral-300 dark:border-neutral-700 focus:border-black dark:focus:border-white transition-colors outline-none"
             />
           </div>
-          {errors.email && (
-            <p className="text-red-500 text-sm animate-fade-in">{errors.email.message}</p>
-          )}
+          {errors.email && <p className="text-[10px] uppercase text-neutral-500">{errors.email.message}</p>}
         </div>
 
-        {/* 密码输入 */}
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            密码
-          </label>
+        {/* 密码 */}
+        <div className="space-y-3">
+          <label className="text-[10px] font-semibold tracking-[0.2em] uppercase text-neutral-400">Password</label>
           <div className="relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-              <Lock className="w-5 h-5" />
-            </div>
+            <div className="absolute left-0 top-0 bottom-0 w-px bg-neutral-300 dark:bg-neutral-700" />
             <input
               {...register('password')}
-              type={showPassword ? "text" : "password"}
+              type="password"
               placeholder="••••••••"
-              disabled={loading}
-              className={`w-full h-12 pl-12 pr-12 bg-white dark:bg-gray-800 border-2 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 transition-all duration-200 focus:outline-none ${
-                errors.password 
-                  ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-500/10' 
-                  : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10'
-              }`}
+              disabled={isLoading}
+              className="w-full h-14 pl-6 pr-4 bg-transparent border-0 border-b border-neutral-300 dark:border-neutral-700 focus:border-black dark:focus:border-white transition-colors outline-none"
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
           </div>
           
-          {/* 密码强度指示器 */}
+          {/* 密码强度检查 */}
           {password.length > 0 && (
-            <div className="mt-2 space-y-1.5 animate-fade-in">
-              <div className="flex items-center gap-2 text-sm">
-                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${passwordChecks.length ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                  {passwordChecks.length && <CheckCircle className="w-3 h-3" />}
+            <div className="mt-4 space-y-2 border-l border-neutral-300 dark:border-neutral-700 pl-4">
+              {[
+                { check: passwordChecks.length, label: '至少8个字符' },
+                { check: passwordChecks.uppercase, label: '包含大写字母' },
+                { check: passwordChecks.number, label: '包含数字' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className={`w-3 h-3 border ${item.check ? 'bg-black dark:bg-white border-black dark:border-white' : 'border-neutral-300'}`} />
+                  <span className={`text-[10px] tracking-wider ${item.check ? 'text-black dark:text-white' : 'text-neutral-400'}`}>
+                    {item.label}
+                  </span>
                 </div>
-                <span className={passwordChecks.length ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>至少8个字符</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${passwordChecks.uppercase ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                  {passwordChecks.uppercase && <CheckCircle className="w-3 h-3" />}
-                </div>
-                <span className={passwordChecks.uppercase ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>包含大写字母</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${passwordChecks.number ? 'bg-green-500 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>
-                  {passwordChecks.number && <CheckCircle className="w-3 h-3" />}
-                </div>
-                <span className={passwordChecks.number ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>包含数字</span>
-              </div>
+              ))}
             </div>
           )}
         </div>
 
         {/* 确认密码 */}
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            确认密码
-          </label>
+        <div className="space-y-3">
+          <label className="text-[10px] font-semibold tracking-[0.2em] uppercase text-neutral-400">Confirm Password</label>
           <div className="relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-              <Lock className="w-5 h-5" />
-            </div>
+            <div className="absolute left-0 top-0 bottom-0 w-px bg-neutral-300 dark:bg-neutral-700" />
             <input
               {...register('confirmPassword')}
-              type={showConfirmPassword ? "text" : "password"}
+              type="password"
               placeholder="••••••••"
-              disabled={loading}
-              className={`w-full h-12 pl-12 pr-12 bg-white dark:bg-gray-800 border-2 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 transition-all duration-200 focus:outline-none ${
-                errors.confirmPassword 
-                  ? 'border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-500/10' 
-                  : 'border-gray-200 dark:border-gray-700 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10'
-              }`}
+              disabled={isLoading}
+              className="w-full h-14 pl-6 pr-4 bg-transparent border-0 border-b border-neutral-300 dark:border-neutral-700 focus:border-black dark:focus:border-white transition-colors outline-none"
             />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
           </div>
-          {errors.confirmPassword && (
-            <p className="text-red-500 text-sm animate-fade-in">{errors.confirmPassword.message}</p>
-          )}
+          {errors.confirmPassword && <p className="text-[10px] uppercase text-neutral-500">{errors.confirmPassword.message}</p>}
         </div>
 
-        {/* 错误提示 */}
         {serverError && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center gap-3 animate-fade-in">
-            <div className="w-8 h-8 bg-red-100 dark:bg-red-800/50 rounded-full flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </div>
-            <p className="text-red-700 dark:text-red-400 text-sm">{serverError}</p>
+          <div className="py-4 border-l-2 border-black dark:border-white pl-4">
+            <p className="text-sm text-neutral-600">{serverError}</p>
           </div>
         )}
 
         {/* 注册按钮 */}
         <button
           type="submit"
-          disabled={loading}
-          className="w-full h-12 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl shadow-lg shadow-orange-200 dark:shadow-orange-900/30 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
+          disabled={isLoading}
+          className="group w-full h-16 relative bg-black dark:bg-white text-white dark:text-black font-medium tracking-wider uppercase transition-all hover:bg-neutral-800 dark:hover:bg-neutral-200 disabled:opacity-50"
         >
-          {loading ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>创建中...</span>
-            </>
-          ) : (
-            <>
-              <span>创建账号</span>
-              <ArrowRight className="w-5 h-5" />
-            </>
-          )}
+          <div className="absolute top-2 left-2 w-2 h-2 border-l border-t border-white/30 dark:border-black/30" />
+          <div className="absolute top-2 right-2 w-2 h-2 border-r border-t border-white/30 dark:border-black/30" />
+          <div className="absolute bottom-2 left-2 w-2 h-2 border-l border-b border-white/30 dark:border-black/30" />
+          <div className="absolute bottom-2 right-2 w-2 h-2 border-r border-b border-white/30 dark:border-black/30" />
+          
+          <div className="flex items-center justify-center gap-3">
+            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+              <> <span>Create Account</span> <ArrowUpRight className="w-5 h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" /> </>
+            )}
+          </div>
         </button>
 
-        {/* 登录链接 */}
-        <div className="text-center pt-4">
-          <p className="text-gray-500 dark:text-gray-400">
-            已有账号？{' '}
-            <a 
-              href="/login" 
-              className="text-orange-600 hover:text-orange-500 font-semibold transition-colors"
-            >
-              立即登录
-            </a>
-          </p>
+        <div className="flex items-center justify-between pt-6 border-t border-neutral-200 dark:border-neutral-800">
+          <span className="text-sm text-neutral-500">已有账号？</span>
+          <a href="/login" className="text-sm font-medium hover:underline underline-offset-4">立即登录 →</a>
         </div>
       </form>
     </div>
