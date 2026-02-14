@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import asyncio
 
 from app.core.database import get_db
-from app.core.security import get_current_user_id
+from app.core.security import get_current_user_id, get_current_user_id_optional
 from app.models.item import Item, Favorite, ViewHistory
 from app.schemas.item import ItemResponse
 
@@ -30,11 +30,15 @@ def get_lock(item_id: int):
 async def record_view(
     item_id: int,
     db: AsyncSession = Depends(get_db),
-    user_id: Optional[str] = Depends(get_current_user_id)
+    user_id: Optional[str] = Depends(get_current_user_id_optional)
 ):
     """
-    记录商品浏览 - 使用乐观锁防止并发问题
+    记录商品浏览
+    - 未登录用户：每次访问都增加浏览量
+    - 登录用户：只有第一次浏览增加浏览量，后续只更新时间
     """
+    from datetime import datetime
+    
     try:
         # 先检查商品是否存在
         result = await db.execute(select(Item.id, Item.view_count).where(Item.id == item_id))
@@ -43,53 +47,60 @@ async def record_view(
         if not item_data:
             raise HTTPException(status_code=404, detail="Item not found")
         
-        # 使用数据库级别的原子更新，避免并发问题
-        await db.execute(
-            update(Item)
-            .where(Item.id == item_id)
-            .values(view_count=Item.view_count + 1)
-        )
-        
-        # 如果用户已登录，异步记录浏览历史
+        # 如果用户已登录，检查是否已经浏览过
         if user_id:
-            try:
-                # 使用 ON CONFLICT 语义（PostgreSQL）
-                # 先尝试查询是否存在
-                result = await db.execute(
-                    select(ViewHistory).where(
-                        ViewHistory.user_id == user_id,
-                        ViewHistory.item_id == item_id
-                    )
+            result = await db.execute(
+                select(ViewHistory).where(
+                    ViewHistory.user_id == user_id,
+                    ViewHistory.item_id == item_id
                 )
-                existing = result.scalar_one_or_none()
+            )
+            existing = result.scalar_one_or_none()
+            
+            if existing:
+                # 已经浏览过，只更新时间，不增加浏览量
+                existing.viewed_at = datetime.utcnow()
+                await db.commit()
                 
-                if existing:
-                    # 更新时间
-                    from datetime import datetime
-                    existing.viewed_at = datetime.utcnow()
-                else:
-                    # 创建新记录
-                    view_history = ViewHistory(user_id=user_id, item_id=item_id)
-                    db.add(view_history)
+                # 返回当前浏览量（不增加）
+                result = await db.execute(
+                    select(Item.view_count).where(Item.id == item_id)
+                )
+                current_count = result.scalar()
+                return {"message": "View updated", "view_count": current_count, "is_new": False}
+            else:
+                # 第一次浏览，增加浏览量并创建记录
+                await db.execute(
+                    update(Item)
+                    .where(Item.id == item_id)
+                    .values(view_count=Item.view_count + 1)
+                )
+                
+                # 创建浏览记录
+                view_history = ViewHistory(user_id=user_id, item_id=item_id)
+                db.add(view_history)
+                await db.commit()
                 
                 # 获取更新后的浏览量
-                await db.flush()
                 result = await db.execute(
                     select(Item.view_count).where(Item.id == item_id)
                 )
                 new_count = result.scalar()
-                
-                await db.commit()
-                return {"message": "View recorded", "view_count": new_count}
-                
-            except IntegrityError:
-                # 并发冲突，忽略
-                await db.rollback()
-                return {"message": "View recorded", "view_count": item_data[1] + 1}
+                return {"message": "View recorded", "view_count": new_count, "is_new": True}
         else:
-            # 未登录用户只更新浏览量
+            # 未登录用户，直接增加浏览量（不记录历史）
+            await db.execute(
+                update(Item)
+                .where(Item.id == item_id)
+                .values(view_count=Item.view_count + 1)
+            )
             await db.commit()
-            return {"message": "View recorded", "view_count": item_data[1] + 1}
+            
+            result = await db.execute(
+                select(Item.view_count).where(Item.id == item_id)
+            )
+            new_count = result.scalar()
+            return {"message": "View recorded", "view_count": new_count, "is_new": True}
         
     except HTTPException:
         raise
@@ -157,7 +168,7 @@ async def toggle_favorite(
 async def get_item_stats(
     item_id: int,
     db: AsyncSession = Depends(get_db),
-    user_id: Optional[str] = Depends(get_current_user_id)
+    user_id: Optional[str] = Depends(get_current_user_id_optional)
 ):
     """
     获取商品统计信息 - 单次查询优化

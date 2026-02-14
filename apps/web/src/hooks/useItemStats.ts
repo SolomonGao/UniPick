@@ -173,7 +173,7 @@ export function useUserFavorites() {
   const fetchFavorites = useCallback(async (force = false) => {
     if (!isAuthenticated) return;
     
-    // 5分钟内不重复请求
+    // 5分钟内不重复请求（除非强制刷新）
     if (!force && Date.now() - cacheTime.current < 5 * 60 * 1000) {
       return;
     }
@@ -207,6 +207,21 @@ export function useUserFavorites() {
     fetchFavorites();
   }, [fetchFavorites]);
 
+  // 监听收藏更新事件
+  useEffect(() => {
+    const handleFavoriteToggled = () => {
+      // 延迟刷新，确保后端已处理完成
+      setTimeout(() => {
+        fetchFavorites(true);
+      }, 500);
+    };
+
+    window.addEventListener('unipick:favoriteToggled', handleFavoriteToggled);
+    return () => {
+      window.removeEventListener('unipick:favoriteToggled', handleFavoriteToggled);
+    };
+  }, [fetchFavorites]);
+
   return { 
     favorites, 
     loading, 
@@ -226,7 +241,7 @@ export function useUserViewHistory() {
   const fetchHistory = useCallback(async (force = false) => {
     if (!isAuthenticated) return;
     
-    // 5分钟内不重复请求
+    // 5分钟内不重复请求（除非强制刷新）
     if (!force && Date.now() - cacheTime.current < 5 * 60 * 1000) {
       return;
     }
@@ -258,6 +273,21 @@ export function useUserViewHistory() {
 
   useEffect(() => {
     fetchHistory();
+  }, [fetchHistory]);
+
+  // 监听浏览记录更新事件
+  useEffect(() => {
+    const handleViewRecorded = () => {
+      // 延迟刷新，确保后端已处理完成
+      setTimeout(() => {
+        fetchHistory(true);
+      }, 500);
+    };
+
+    window.addEventListener('unipick:viewRecorded', handleViewRecorded);
+    return () => {
+      window.removeEventListener('unipick:viewRecorded', handleViewRecorded);
+    };
   }, [fetchHistory]);
 
   return { 

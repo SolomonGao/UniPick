@@ -29,6 +29,7 @@ const itemSchema = z.object({
   location_name: z.string().min(2, "请选择交易地点"),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
+  is_location_private: z.boolean().default(false),
 });
 
 type ItemFormInputs = z.infer<typeof itemSchema>;
@@ -54,7 +55,8 @@ export default function SellItemForm() {
     defaultValues: {
       latitude: 37.2294,
       longitude: -80.4139,
-      location_name: ''
+      location_name: '',
+      is_location_private: false
     }
   });
 
@@ -105,10 +107,11 @@ export default function SellItemForm() {
   };
 
   // 处理位置变化
-  const handleLocationChange = (lat: number, lng: number, name: string) => {
+  const handleLocationChange = (lat: number, lng: number, name: string, isPrivate?: boolean) => {
     setValue('latitude', lat);
     setValue('longitude', lng);
     setValue('location_name', name);
+    setValue('is_location_private', isPrivate || false);
   };
 
   // 处理图片拖拽
@@ -188,7 +191,8 @@ export default function SellItemForm() {
         location_name: data.location_name,
         images: allImages,
         latitude: data.latitude,
-        longitude: data.longitude
+        longitude: data.longitude,
+        is_location_private: data.is_location_private
       };
 
       // 4. 调用后端 API
@@ -216,8 +220,21 @@ export default function SellItemForm() {
       }
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.detail || (isEditMode ? "更新失败" : "发布失败"));
+        let errorMessage = isEditMode ? "更新失败" : "发布失败";
+        try {
+          const errData = await response.json();
+          console.error('Server error:', errData);
+          if (typeof errData.detail === 'string') {
+            errorMessage = errData.detail;
+          } else if (errData.detail && typeof errData.detail === 'object') {
+            errorMessage = errData.detail.message || JSON.stringify(errData.detail);
+          }
+        } catch (e) {
+          const text = await response.text();
+          console.error('Server error (text):', text);
+          errorMessage = text || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       toast.success(isEditMode ? "更新成功！" : "发布成功！");
@@ -259,7 +276,7 @@ export default function SellItemForm() {
       <div className="flex items-center gap-4">
         <a 
           href={isEditMode ? "/my-listings" : "/"} 
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="text-sm font-medium">{isEditMode ? "返回我的发布" : "返回主页"}</span>
@@ -272,13 +289,13 @@ export default function SellItemForm() {
       </div>
 
       {/* 标题 */}
-      <h1 className="text-2xl font-bold text-gray-900">
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
         {isEditMode ? '编辑商品' : '发布新商品'}
       </h1>
 
       {/* 图片上传区 */}
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
           商品图片 (最多4张，已有 {existingImages.length} 张)
         </label>
         
@@ -286,7 +303,7 @@ export default function SellItemForm() {
         {existingImages.length > 0 && (
           <div className="grid grid-cols-4 gap-4 mb-4">
             {existingImages.map((url, index) => (
-              <div key={`existing-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
+              <div key={`existing-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group">
                 <img src={url} alt={`existing-${index}`} className="w-full h-full object-cover" />
                 <button
                   type="button"
@@ -302,10 +319,10 @@ export default function SellItemForm() {
         
         {/* 新图片上传 */}
         {existingImages.length + images.length < 4 && (
-          <div {...getRootProps()} className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 cursor-pointer transition-colors">
+          <div {...getRootProps()} className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors dark:bg-gray-800/50">
             <input {...getInputProps()} />
             <Upload className="mx-auto h-10 w-10 text-gray-400 mb-2" />
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {isEditMode ? '点击或拖拽添加更多图片' : '点击或拖拽上传图片'}
             </p>
           </div>
@@ -315,7 +332,7 @@ export default function SellItemForm() {
         {images.length > 0 && (
           <div className="grid grid-cols-4 gap-4 mt-4">
             {images.map((file, index) => (
-              <div key={`new-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
+              <div key={`new-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group">
                 <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover" />
                 <button
                   type="button"
@@ -332,19 +349,19 @@ export default function SellItemForm() {
 
       {/* 标题 */}
       <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-700">标题</label>
-        <input {...register('title')} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="例如：99新 Switch OLED" />
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">标题</label>
+        <input {...register('title')} className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none dark:bg-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500" placeholder="例如：99新 Switch OLED" />
         {errors.title && <p className="text-red-500 text-xs">{errors.title.message}</p>}
       </div>
 
       {/* 价格 */}
       <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-700">价格 ($)</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">价格 ($)</label>
         <input
           type="number"
           step="0.01"
           {...register('price', { valueAsNumber: true })}
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+          className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none dark:bg-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
           placeholder="0.00"
         />
         {errors.price && <p className="text-red-500 text-xs">{errors.price.message}</p>}
@@ -352,10 +369,10 @@ export default function SellItemForm() {
 
       {/* 分类 */}
       <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-700">分类</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">分类</label>
         <select
           {...register('category')}
-          className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+          className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white dark:bg-gray-800 dark:text-white"
         >
           <option value="">请选择分类</option>
           {CATEGORIES.map((cat) => (
@@ -369,8 +386,8 @@ export default function SellItemForm() {
 
       {/* 描述 */}
       <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-700">描述</label>
-        <textarea {...register('description')} rows={4} className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="描述一下成色、交易方式..." />
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">描述</label>
+        <textarea {...register('description')} rows={4} className="w-full px-4 py-2 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none dark:bg-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500" placeholder="描述一下成色、交易方式..." />
       </div>
 
       {/* 位置选择器 */}

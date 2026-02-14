@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useQuery, QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MapPin, ArrowLeft, User, Calendar, DollarSign, MessageCircle, Edit3 } from 'lucide-react';
+import { MapPin, ArrowLeft, User, Calendar, DollarSign, MessageCircle, Edit3, Eye, Heart } from 'lucide-react';
 import { API_ENDPOINTS } from '../lib/constants';
 import { supabase } from '../lib/supabase';
 
@@ -15,6 +15,16 @@ interface Item {
   longitude: number;
   user_id: string;
   created_at: string;
+  view_count?: number;
+  favorite_count?: number;
+  is_location_private?: boolean;
+  location_fuzzy?: string | null;
+}
+
+interface ItemStats {
+  view_count: number;
+  favorite_count: number;
+  is_favorited: boolean;
 }
 
 interface ItemDetailProps {
@@ -35,6 +45,7 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [fromPage, setFromPage] = useState<string>("/");
+  const [stats, setStats] = useState<ItemStats>({ view_count: 0, favorite_count: 0, is_favorited: false });
 
   // 获取当前用户ID和来源页面
   useEffect(() => {
@@ -49,6 +60,94 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
       setFromPage('/my-listings');
     }
   }, []);
+
+  // 记录浏览量
+  const recordView = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      
+      await fetch(`${API_ENDPOINTS.items}/${itemId}/view`, {
+        method: 'POST',
+        headers,
+      });
+      
+      // 触发浏览记录更新事件，通知个人中心页刷新
+      window.dispatchEvent(new CustomEvent('unipick:viewRecorded', { 
+        detail: { itemId, timestamp: Date.now() } 
+      }));
+    } catch (err) {
+      console.error('Failed to record view:', err);
+    }
+  }, [itemId]);
+
+  // 获取统计信息
+  const fetchStats = useCallback(async () => {
+    try {
+      // 获取 session 以验证用户（用于获取 is_favorited 状态）
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      
+      const response = await fetch(`${API_ENDPOINTS.items}/${itemId}/stats`, {
+        headers
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch stats:', err);
+    }
+  }, [itemId]);
+
+  // 切换收藏
+  const toggleFavorite = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_ENDPOINTS.items}/${itemId}/favorite`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setStats(prev => ({
+          ...prev,
+          is_favorited: data.is_favorited,
+          favorite_count: data.is_favorited 
+            ? prev.favorite_count + 1 
+            : Math.max(0, prev.favorite_count - 1)
+        }));
+        
+        // 触发收藏更新事件，通知个人中心页刷新
+        window.dispatchEvent(new CustomEvent('unipick:favoriteToggled', { 
+          detail: { itemId, is_favorited: data.is_favorited, timestamp: Date.now() } 
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to toggle favorite:', err);
+    }
+  };
+
+  // 组件挂载时记录浏览和获取统计
+  useEffect(() => {
+    recordView();
+    fetchStats();
+  }, [recordView, fetchStats]);
 
   const { data: item, isLoading, error } = useQuery({
     queryKey: ['item', itemId],
@@ -151,11 +250,46 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
             </span>
           </div>
 
+          {/* 浏览量和收藏数 */}
+          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-1">
+              <Eye className="w-4 h-4" />
+              <span>{stats.view_count || item.view_count || 0} 次浏览</span>
+            </div>
+            <button
+              onClick={toggleFavorite}
+              className={`flex items-center gap-1 transition-colors ${
+                stats.is_favorited ? 'text-red-500' : 'hover:text-red-400'
+              }`}
+            >
+              <Heart className={`w-4 h-4 ${stats.is_favorited ? 'fill-current' : ''}`} />
+              <span>{stats.favorite_count || item.favorite_count || 0} 收藏</span>
+            </button>
+          </div>
+
           <div className="flex items-start gap-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
             <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
             <div>
-              <p className="font-medium text-gray-900 dark:text-gray-100">交易地点</p>
-              <p className="text-gray-600 dark:text-gray-400">{item.location_name || 'Virginia Tech Campus'}</p>
+              <p className="font-medium text-gray-900 dark:text-gray-100">
+                交易地点
+                {item.is_location_private && (
+                  <span className="ml-2 text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full">
+                    保密
+                  </span>
+                )}
+              </p>
+              <p className="text-gray-600 dark:text-gray-400">
+                {/* 位置保密且不是自己的商品，显示模糊位置 */}
+                {item.is_location_private && currentUserId !== item.user_id
+                  ? (item.location_fuzzy || 'VT Campus Area (具体地址已隐藏)')
+                  : (item.location_name || 'Virginia Tech Campus')
+                }
+              </p>
+              {item.is_location_private && currentUserId !== item.user_id && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  卖家已隐藏精确地址，成交后可见
+                </p>
+              )}
             </div>
           </div>
 

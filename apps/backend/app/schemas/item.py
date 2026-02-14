@@ -10,6 +10,7 @@ class ItemBase(BaseModel):
     description: Optional[str] = None
     location_name: Optional[str] = None
     category: Optional[str] = None  # 商品分类
+    is_location_private: bool = False  # 位置是否保密
     
     # 经纬度输入 (前端传给后端)
     latitude: float = Field(..., ge=-90, le=90)
@@ -26,7 +27,9 @@ class ItemResponse(ItemBase):
     user_id: UUID
     images: List[str]
     view_count: int = 0
+    favorite_count: int = 0  # 收藏数
     created_at: Optional[datetime] = None
+    location_fuzzy: Optional[str] = None  # 模糊位置（保密时显示）
 
     class Config:
         from_attributes = True # 让 Pydantic 能读取 SQLAlchemy 对象

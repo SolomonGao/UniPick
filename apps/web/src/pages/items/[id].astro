@@ -1,21 +1,9 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import ItemDetail from '../../components/ItemDetail.tsx';
-import { supabase } from '../../lib/supabase';
-export const prerender = true;
 
-// 生成静态路径
-export async function getStaticPaths() {
-  const { data: items } = await supabase
-    .from('items')
-    .select('id');
-  
-  if (!items) return [];
-  
-  return items.map(item => ({
-    params: { id: item.id.toString() },
-  }));
-}
+// 禁用静态生成，使用 SSR 模式支持动态路由
+export const prerender = false;
 
 const { id } = Astro.params;
 ---

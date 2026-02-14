@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, func
+from sqlalchemy import select, and_, or_, func, distinct
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
@@ -9,10 +9,10 @@ import logging
 
 from app.core.database import get_db
 from app.core.permissions import require_auth, require_item_owner
-from app.models.item import Item
+from app.models.item import Item, Favorite
 from app.schemas.item import ItemCreate, ItemResponse
 from app.schemas.errors import ErrorResponse, ValidationErrorResponse, NotFoundErrorResponse
-from app.core.security import get_current_user_id
+from app.core.security import get_current_user_id, get_current_user_id_optional
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -44,6 +44,27 @@ def get_fuzzy_location(distance_km: float) -> str:
         return "Within 25 miles"
     else:
         return f"{int(distance_miles)} miles away"
+
+
+def extract_zip_code(location_name: str) -> str:
+    """从地址中提取邮政编码（ZIP code）
+    
+    美国邮政编码格式：5位数字 或 5位-4位数字
+    例如：24060, 24060-1234
+    """
+    if not location_name:
+        return "VT Campus Area"
+    
+    import re
+    # 匹配 5位数字 或 5位-4位数字 的邮政编码格式
+    zip_pattern = r'\b(\d{5})(-\d{4})?\b'
+    match = re.search(zip_pattern, location_name)
+    
+    if match:
+        return f"ZIP {match.group(1)}"
+    
+    # 如果没有找到邮政编码，返回默认区域
+    return "VT Campus Area"
 
 def format_distance(distance_km: float) -> str:
     """格式化距离显示"""
@@ -106,7 +127,8 @@ async def create_item(
             location_name=item_in.location_name,
             location=geo_point,
             user_id=user_id,
-            category=item_in.category
+            category=item_in.category,
+            is_location_private=item_in.is_location_private
         )
         
         db.add(new_item)
@@ -245,16 +267,40 @@ async def list_items(
         )
     
     try:
+        # 子查询：计算每个商品的收藏数
+        favorite_count_subquery = (
+            select(
+                Favorite.item_id.label('fav_item_id'),
+                func.count(Favorite.id).label('fav_count')
+            )
+            .group_by(Favorite.item_id)
+            .subquery()
+        )
+        
         # 如果有地理位置参数，计算距离并排序
         if lat is not None and lng is not None:
             # 计算距离的表达式
             point = func.ST_GeogFromText(f"POINT({lng} {lat})")
             distance_expr = func.ST_Distance(Item.location, point) / 1000  # 转换为 km
             
-            # 构建查询，包含距离
-            query = select(Item, distance_expr.label('distance'))
+            # 构建查询，包含距离和收藏数
+            query = select(
+                Item, 
+                distance_expr.label('distance'),
+                func.coalesce(favorite_count_subquery.c.fav_count, 0).label('favorite_count')
+            ).outerjoin(
+                favorite_count_subquery,
+                Item.id == favorite_count_subquery.c.fav_item_id
+            )
         else:
-            query = select(Item)
+            # 构建查询，包含收藏数
+            query = select(
+                Item,
+                func.coalesce(favorite_count_subquery.c.fav_count, 0).label('favorite_count')
+            ).outerjoin(
+                favorite_count_subquery,
+                Item.id == favorite_count_subquery.c.fav_item_id
+            )
         
         # 关键词搜索
         if keyword:
@@ -329,28 +375,67 @@ async def list_items(
             for row in result.all():
                 item = row[0]
                 distance = row[1]
-                # 添加距离信息到 item
+                favorite_count = row[2] if len(row) > 2 else 0
+                
+                # 处理位置保密：如果保密且不是自己发布的，只显示邮政编码
+                location_name = item.location_name
+                location_fuzzy = None
+                if item.is_location_private:
+                    location_fuzzy = extract_zip_code(location_name)
+                
+                # 添加距离信息和统计到 item
                 item_dict = {
                     "id": item.id,
                     "title": item.title,
                     "price": item.price,
                     "description": item.description,
-                    "location_name": item.location_name,
+                    "location_name": location_name,
                     "category": item.category,
                     "images": item.images,
                     "user_id": item.user_id,
                     "created_at": item.created_at,
                     "latitude": item.latitude,
                     "longitude": item.longitude,
+                    "view_count": item.view_count or 0,
+                    "favorite_count": favorite_count or 0,
+                    "is_location_private": item.is_location_private,
                     "distance": round(distance, 2) if distance else None,
                     "distance_display": format_distance(distance) if distance else None,
-                    "location_fuzzy": get_fuzzy_location(distance) if distance else None
+                    "location_fuzzy": location_fuzzy
                 }
                 items_with_distance.append(item_dict)
             return items_with_distance
         else:
             # 无距离信息的结果
-            items = result.scalars().all() if hasattr(result, 'scalars') else [row[0] for row in result.all()]
+            items = []
+            for row in result.all():
+                item = row[0]
+                favorite_count = row[1] if len(row) > 1 else 0
+                
+                # 处理位置保密：只显示邮政编码
+                location_name = item.location_name
+                location_fuzzy = None
+                if item.is_location_private:
+                    location_fuzzy = extract_zip_code(location_name)
+                
+                item_dict = {
+                    "id": item.id,
+                    "title": item.title,
+                    "price": item.price,
+                    "description": item.description,
+                    "location_name": location_name,
+                    "category": item.category,
+                    "images": item.images,
+                    "user_id": item.user_id,
+                    "created_at": item.created_at,
+                    "latitude": item.latitude,
+                    "longitude": item.longitude,
+                    "view_count": item.view_count or 0,
+                    "favorite_count": favorite_count or 0,
+                    "is_location_private": item.is_location_private,
+                    "location_fuzzy": location_fuzzy
+                }
+                items.append(item_dict)
             return items
         
     except SQLAlchemyError as e:
@@ -384,7 +469,8 @@ async def list_items(
 )
 async def get_item(
     item_id: int = Path(..., gt=0, description="商品ID"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user_id: Optional[str] = Depends(get_current_user_id_optional)
 ):
     """
     获取单个商品详情
@@ -398,13 +484,37 @@ async def get_item(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
-                    "error": "ItemNotFound",
+                    "error": "ItemNotNotFound",
                     "message": f"未找到ID为 {item_id} 的商品",
                     "details": {"item_id": item_id}
                 }
             )
         
-        return item
+        # 处理位置保密：如果不是自己的商品且设置了保密，显示邮政编码
+        location_fuzzy = None
+        if item.is_location_private and str(item.user_id) != str(current_user_id):
+            location_fuzzy = extract_zip_code(item.location_name)
+        
+        # 构建返回数据
+        item_dict = {
+            "id": item.id,
+            "title": item.title,
+            "price": item.price,
+            "description": item.description,
+            "location_name": item.location_name,
+            "category": item.category,
+            "images": item.images,
+            "user_id": item.user_id,
+            "created_at": item.created_at,
+            "latitude": item.latitude,
+            "longitude": item.longitude,
+            "view_count": item.view_count or 0,
+            "favorite_count": 0,  # 详情页可以额外查询
+            "is_location_private": item.is_location_private,
+            "location_fuzzy": location_fuzzy
+        }
+        
+        return item_dict
         
     except HTTPException:
         raise

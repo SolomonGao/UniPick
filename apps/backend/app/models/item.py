@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ARRAY, DateTime, text, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, ARRAY, DateTime, Boolean, text, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from geoalchemy2 import Geography # 专业处理地理位置
 from sqlalchemy.orm import relationship
@@ -23,6 +23,9 @@ class Item(Base):
     
     # 商品分类
     category = Column(String, nullable=True)
+    
+    # 位置保密设置
+    is_location_private = Column(Boolean, default=False, server_default=text('false'))
     
     # 浏览量统计
     view_count = Column(Integer, default=0, server_default=text('0'))

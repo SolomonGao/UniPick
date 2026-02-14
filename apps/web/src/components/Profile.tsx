@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { User, Package, Heart, Eye, Mail, Calendar, MapPin } from 'lucide-react';
+import { User, Package, Heart, Eye, Mail, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { useAuth } from '../components/AuthGuard';
 import { useUserFavorites, useUserViewHistory } from '../hooks/useItemStats';
 import { supabase } from '../lib/supabase';
@@ -80,16 +80,16 @@ export default function Profile() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">请先登录</p>
+      <div className="min-h-screen flex items-center justify-center dark:bg-gray-900">
+        <p className="text-gray-500 dark:text-gray-400">请先登录</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-8 dark:bg-gray-900 min-h-screen">
       {/* 头部信息 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 mb-6">
         <div className="flex items-center gap-4">
           <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center">
             {profile?.avatar_url ? (
@@ -104,10 +104,10 @@ export default function Profile() {
           </div>
           
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               {profile?.full_name || '用户'}
             </h1>
-            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
               <span className="flex items-center gap-1">
                 <Mail className="w-4 h-4" />
                 {profile?.email}
@@ -122,35 +122,35 @@ export default function Profile() {
 
         {/* 统计卡片 */}
         <div className="grid grid-cols-4 gap-4 mt-6">
-          <div className="bg-gray-50 rounded-xl p-4 text-center">
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 text-center">
             <Package className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-900">{myItems.length}</div>
-            <div className="text-sm text-gray-500">我的发布</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{myItems.length}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">我的发布</div>
           </div>
           
-          <div className="bg-gray-50 rounded-xl p-4 text-center">
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 text-center">
             <Heart className="w-6 h-6 text-red-500 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-900">{favorites.length}</div>
-            <div className="text-sm text-gray-500">我的收藏</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{favorites.length}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">我的收藏</div>
           </div>
           
-          <div className="bg-gray-50 rounded-xl p-4 text-center">
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 text-center">
             <Eye className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-900">{history.length}</div>
-            <div className="text-sm text-gray-500">浏览记录</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{history.length}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">浏览记录</div>
           </div>
           
-          <div className="bg-gray-50 rounded-xl p-4 text-center">
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 text-center">
             <MapPin className="w-6 h-6 text-green-500 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-900">VT</div>
-            <div className="text-sm text-gray-500">我的位置</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">VT</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">我的位置</div>
           </div>
         </div>
       </div>
 
       {/* 标签页 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex border-b border-gray-100">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div className="flex border-b border-gray-100 dark:border-gray-700">
           {[
             { id: 'overview', label: '概览', icon: Package },
             { id: 'favorites', label: '我的收藏', icon: Heart },
@@ -162,7 +162,7 @@ export default function Profile() {
               className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'text-orange-600 border-b-2 border-orange-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
             >
               <tab.icon className="w-4 h-4" />
@@ -175,16 +175,16 @@ export default function Profile() {
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4">最近发布</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">最近发布</h3>
                 {myItems.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {myItems.map((item) => (
                       <a
                         key={item.id}
                         href={`/items/${item.id}`}
-                        className="border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+                        className="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-md transition-shadow dark:bg-gray-800"
                       >
-                        <div className="aspect-video bg-gray-100">
+                        <div className="aspect-video bg-gray-100 dark:bg-gray-700">
                           {item.images?.[0] ? (
                             <img 
                               src={item.images[0]} 
@@ -192,20 +192,20 @@ export default function Profile() {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                            <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
                               无图片
                             </div>
                           )}
                         </div>
                         <div className="p-3">
-                          <h4 className="font-medium text-gray-900 truncate">{item.title}</h4>
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100 truncate">{item.title}</h4>
                           <p className="text-orange-600 font-bold">${item.price}</p>
                         </div>
                       </a>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-center py-8">还没有发布商品</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-8">还没有发布商品</p>
                 )}
               </div>
             </div>
@@ -214,16 +214,18 @@ export default function Profile() {
           {activeTab === 'favorites' && (
             <div>
               {favoritesLoading ? (
-                <p className="text-center py-8">加载中...</p>
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-orange-600" />
+                </div>
               ) : favorites.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {favorites.map((item: Item) => (
                     <a
                       key={item.id}
                       href={`/items/${item.id}`}
-                      className="border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+                      className="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-md transition-shadow dark:bg-gray-800"
                     >
-                      <div className="aspect-video bg-gray-100">
+                      <div className="aspect-video bg-gray-100 dark:bg-gray-700">
                         {item.images?.[0] ? (
                           <img 
                             src={item.images[0]} 
@@ -231,16 +233,16 @@ export default function Profile() {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
                             无图片
                           </div>
                         )}
                       </div>
                       <div className="p-3">
-                        <h4 className="font-medium text-gray-900 truncate">{item.title}</h4>
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100 truncate">{item.title}</h4>
                         <p className="text-orange-600 font-bold">${item.price}</p>
                         {item.category && (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
                             {CATEGORY_LABELS[item.category]}
                           </span>
                         )}
@@ -250,8 +252,8 @@ export default function Profile() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <Heart className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-                  <p className="text-gray-500">还没有收藏任何商品</p>
+                  <Heart className="w-16 h-16 text-gray-200 dark:text-gray-700 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">还没有收藏任何商品</p>
                 </div>
               )}
             </div>
@@ -260,16 +262,18 @@ export default function Profile() {
           {activeTab === 'history' && (
             <div>
               {historyLoading ? (
-                <p className="text-center py-8">加载中...</p>
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-orange-600" />
+                </div>
               ) : history.length > 0 ? (
                 <div className="space-y-4">
                   {history.map((item: Item) => (
                     <a
                       key={item.id}
                       href={`/items/${item.id}`}
-                      className="flex gap-4 p-4 border border-gray-100 rounded-xl hover:shadow-md transition-shadow"
+                      className="flex gap-4 p-4 border border-gray-100 dark:border-gray-700 rounded-xl hover:shadow-md transition-shadow dark:bg-gray-800"
                     >
-                      <div className="w-24 h-24 bg-gray-100 rounded-lg flex-shrink-0">
+                      <div className="w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-lg flex-shrink-0">
                         {item.images?.[0] ? (
                           <img 
                             src={item.images[0]} 
@@ -277,15 +281,15 @@ export default function Profile() {
                             className="w-full h-full object-cover rounded-lg"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
                             无图片
                           </div>
                         )}
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{item.title}</h4>
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100">{item.title}</h4>
                         <p className="text-orange-600 font-bold mt-1">${item.price}</p>
-                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
                           <span>浏览 {item.view_count || 0} 次</span>
                           {item.category && (
                             <span>{CATEGORY_LABELS[item.category]}</span>
@@ -297,8 +301,8 @@ export default function Profile() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <Eye className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-                  <p className="text-gray-500">还没有浏览记录</p>
+                  <Eye className="w-16 h-16 text-gray-200 dark:text-gray-700 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">还没有浏览记录</p>
                 </div>
               )}
             </div>

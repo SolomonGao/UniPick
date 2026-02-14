@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useCallback, memo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
-import { Loader2, MapPin, AlertCircle, Search, Navigation } from 'lucide-react';
+import { Loader2, MapPin, AlertCircle, Search, Navigation, Eye, Heart } from 'lucide-react';
 import { API_ENDPOINTS } from '../lib/constants';
 import { getUserLocation, saveUserLocation } from '../lib/geo';
 import { supabase } from '../lib/supabase';
 import SearchBar, { type SearchFilters } from './SearchBar';
-import ItemStats from './ItemStats';
 
 // 定义接口
 interface Item {
@@ -24,6 +23,12 @@ interface Item {
   location_fuzzy?: string;
   user_id?: string;
   view_count?: number;
+  favorite_count?: number;
+}
+
+// 用户收藏状态
+interface UserFavoritesState {
+  [itemId: number]: boolean;
 }
 
 const PAGE_SIZE = 12;
@@ -31,10 +36,12 @@ const PAGE_SIZE = 12;
 // 优化的商品卡片组件 - 使用 memo 减少重渲染
 const ItemCard = memo(({ 
   item, 
-  isMine 
+  isMine,
+  isFavorited
 }: { 
   item: Item; 
   isMine: boolean;
+  isFavorited: boolean;
 }) => {
   return (
     <a 
@@ -87,8 +94,16 @@ const ItemCard = memo(({
             <span>{item.distance_display}</span>
           </div>
         )}
-        <div className="mt-2">
-          <ItemStats itemId={item.id} showFavorite={true} size="sm" />
+        {/* 使用列表 API 返回的统计数据，避免额外的请求 */}
+        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-2">
+          <div className="flex items-center gap-1">
+            <Eye className="w-3 h-3" />
+            <span>{item.view_count || 0}</span>
+          </div>
+          <div className={`flex items-center gap-1 ${isFavorited ? 'text-red-500' : ''}`}>
+            <Heart className={`w-3 h-3 ${isFavorited ? 'fill-current' : ''}`} />
+            <span>{item.favorite_count || 0}</span>
+          </div>
         </div>
       </div>
     </a>
@@ -171,14 +186,32 @@ export default function SearchableFeed() {
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [userFavorites, setUserFavorites] = useState<UserFavoritesState>({});
   const { ref, inView } = useInView({ threshold: 0 });
 
-  // 获取当前用户ID
+  // 获取当前用户ID和收藏列表
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (mounted && session?.user) {
         setCurrentUserId(session.user.id);
+        
+        // 获取用户收藏列表
+        try {
+          const response = await fetch(`${API_ENDPOINTS.items}/user/favorites`, {
+            headers: { 'Authorization': `Bearer ${session.access_token}` },
+          });
+          if (response.ok) {
+            const favorites = await response.json();
+            const favMap: UserFavoritesState = {};
+            favorites.forEach((item: Item) => {
+              favMap[item.id] = true;
+            });
+            setUserFavorites(favMap);
+          }
+        } catch (err) {
+          console.error('Failed to fetch user favorites:', err);
+        }
       }
     });
     return () => { mounted = false; };
@@ -257,6 +290,13 @@ export default function SearchableFeed() {
       if (filters.minPrice) params.append('min_price', filters.minPrice.toString());
       if (filters.maxPrice) params.append('max_price', filters.maxPrice.toString());
       if (filters.category) params.append('category', filters.category);
+      
+      // 排序参数（无论是否启用位置筛选都生效）
+      if (filters.sortBy && filters.sortBy !== 'distance') {
+        // 非距离排序（价格、时间）
+        params.append('sort_by', filters.sortBy);
+        params.append('sort_order', filters.sortBy === 'price' ? 'asc' : 'desc');
+      }
       
       if (userLocation && filters.useLocation !== false) {
         params.append('lat', userLocation.lat.toString());
@@ -362,6 +402,7 @@ export default function SearchableFeed() {
                 key={item.id} 
                 item={item}
                 isMine={currentUserId === item.user_id}
+                isFavorited={!!userFavorites[item.id]}
               />
             ))}
           </div>
