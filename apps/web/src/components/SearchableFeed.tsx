@@ -58,30 +58,71 @@ const ItemCard = memo(({
         transition-all duration-500 ease-out
         ${isHovered ? 'border-black dark:border-white' : ''}
       `}>
-        {/* 几何装饰角 */}
+        {/* 几何装饰框架 - 建筑感线条 */}
+        {/* 外框线条 */}
+        <div className="absolute inset-0 pointer-events-none">
+          {/* 顶部横线 */}
+          <div className={`
+            absolute top-0 left-0 right-0 h-px 
+            transition-all duration-500
+            ${isHovered ? 'bg-black dark:bg-white' : 'bg-neutral-200 dark:bg-neutral-800'}
+          `} />
+          {/* 底部横线 */}
+          <div className={`
+            absolute bottom-0 left-0 right-0 h-px 
+            transition-all duration-500
+            ${isHovered ? 'bg-black dark:bg-white' : 'bg-neutral-200 dark:bg-neutral-800'}
+          `} />
+          {/* 左侧竖线 */}
+          <div className={`
+            absolute top-0 bottom-0 left-0 w-px 
+            transition-all duration-500
+            ${isHovered ? 'bg-black dark:bg-white' : 'bg-neutral-200 dark:bg-neutral-800'}
+          `} />
+          {/* 右侧竖线 */}
+          <div className={`
+            absolute top-0 bottom-0 right-0 w-px 
+            transition-all duration-500
+            ${isHovered ? 'bg-black dark:bg-white' : 'bg-neutral-200 dark:bg-neutral-800'}
+          `} />
+        </div>
+
+        {/* 四角装饰 - 加粗强调 */}
         <div className={`
-          absolute top-0 left-0 w-4 h-4 border-l-2 border-t-2 
-          border-neutral-300 dark:border-neutral-700
-          transition-all duration-300
-          ${isHovered ? 'w-6 h-6 border-black dark:border-white' : ''}
+          absolute top-0 left-0 w-8 h-8 
+          border-l-2 border-t-2 
+          transition-all duration-500
+          ${isHovered ? 'border-black dark:border-white w-12 h-12' : 'border-neutral-400 dark:border-neutral-600'}
         `} />
         <div className={`
-          absolute top-0 right-0 w-4 h-4 border-r-2 border-t-2
-          border-neutral-300 dark:border-neutral-700
-          transition-all duration-300
-          ${isHovered ? 'w-6 h-6 border-black dark:border-white' : ''}
+          absolute top-0 right-0 w-8 h-8 
+          border-r-2 border-t-2
+          transition-all duration-500
+          ${isHovered ? 'border-black dark:border-white w-12 h-12' : 'border-neutral-400 dark:border-neutral-600'}
         `} />
         <div className={`
-          absolute bottom-0 left-0 w-4 h-4 border-l-2 border-b-2
-          border-neutral-300 dark:border-neutral-700
-          transition-all duration-300
-          ${isHovered ? 'w-6 h-6 border-black dark:border-white' : ''}
+          absolute bottom-0 left-0 w-8 h-8 
+          border-l-2 border-b-2
+          transition-all duration-500
+          ${isHovered ? 'border-black dark:border-white w-12 h-12' : 'border-neutral-400 dark:border-neutral-600'}
         `} />
         <div className={`
-          absolute bottom-0 right-0 w-4 h-4 border-r-2 border-b-2
-          border-neutral-300 dark:border-neutral-700
-          transition-all duration-300
-          ${isHovered ? 'w-6 h-6 border-black dark:border-white' : ''}
+          absolute bottom-0 right-0 w-8 h-8 
+          border-r-2 border-b-2
+          transition-all duration-500
+          ${isHovered ? 'border-black dark:border-white w-12 h-12' : 'border-neutral-400 dark:border-neutral-600'}
+        `} />
+
+        {/* 内部网格线 */}
+        <div className={`
+          absolute top-4 left-4 right-4 h-px 
+          transition-all duration-500 delay-75
+          ${isHovered ? 'bg-neutral-300 dark:bg-neutral-600' : 'bg-transparent'}
+        `} />
+        <div className={`
+          absolute bottom-20 left-4 right-4 h-px 
+          transition-all duration-500 delay-75
+          ${isHovered ? 'bg-neutral-200 dark:bg-neutral-700' : 'bg-transparent'}
         `} />
 
         {/* 图片区域 */}
@@ -175,6 +216,33 @@ const FeaturedCard = memo(({ item }: { item: Item }) => {
     >
       <div className="relative h-full min-h-[400px] lg:min-h-[500px] bg-white dark:bg-neutral-900 overflow-hidden border border-neutral-200 dark:border-neutral-800 transition-all duration-500 hover:border-black dark:hover:border-white"
 003e
+      {/* 建筑感线条框架 */}
+        <div className="absolute inset-0 pointer-events-none">
+          {/* 外框 */}
+          <div className="absolute inset-0 border border-neutral-300 dark:border-neutral-700" />
+          
+          {/* 内框 - 双层线条 */}
+          <div className="absolute inset-4 border border-neutral-200 dark:border-neutral-800" />
+          
+          {/* 十字分割线 */}
+          <div className="absolute top-1/2 left-4 right-4 h-px bg-neutral-200 dark:bg-neutral-800" />
+          <div className="absolute top-4 bottom-4 left-1/2 w-px bg-neutral-200 dark:bg-neutral-800" />
+          
+          {/* 四角加粗标记 */}
+          <div className="absolute top-0 left-0 w-12 h-12 border-l-4 border-t-4 border-black dark:border-white" />
+          <div className="absolute top-0 right-0 w-12 h-12 border-r-4 border-t-4 border-black dark:border-white" />
+          <div className="absolute bottom-0 left-0 w-12 h-12 border-l-4 border-b-4 border-black dark:border-white" />
+          <div className="absolute bottom-0 right-0 w-12 h-12 border-r-4 border-b-4 border-black dark:border-white" />
+        </div>
+
+        {/* 测量标记 - 像建筑图纸 */}
+        <div className="absolute top-4 left-4 text-[9px] font-mono text-white/40 tracking-widest">
+          +—— 1200px ——+
+        </div>
+        <div className="absolute bottom-4 right-4 text-[9px] font-mono text-white/40 tracking-widest">
+          FEATURED // 01
+        </div>
+
         {/* 大图 */}
         <div className="absolute inset-0"
 003e
