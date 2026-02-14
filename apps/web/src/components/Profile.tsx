@@ -139,12 +139,6 @@ export default function Profile() {
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{history.length}</div>
             <div className="text-sm text-gray-500 dark:text-gray-400">浏览记录</div>
           </div>
-          
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 text-center">
-            <MapPin className="w-6 h-6 text-green-500 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">VT</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">我的位置</div>
-          </div>
         </div>
       </div>
 
@@ -152,7 +146,7 @@ export default function Profile() {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
         <div className="flex border-b border-gray-100 dark:border-gray-700">
           {[
-            { id: 'overview', label: '概览', icon: Package },
+            { id: 'overview', label: '我的发布', icon: Package },
             { id: 'favorites', label: '我的收藏', icon: Heart },
             { id: 'history', label: '浏览记录', icon: Eye },
           ].map((tab) => (

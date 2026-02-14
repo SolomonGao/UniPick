@@ -127,26 +127,6 @@ export default function UserMenu() {
                 </div>
                 <span>个人中心</span>
               </a>
-              
-              <a 
-                href="/my-listings" 
-                className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-              >
-                <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                  <Package className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                </div>
-                <span>我的发布</span>
-              </a>
-              
-              <a 
-                href="/profile?tab=favorites" 
-                className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-              >
-                <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                  <Heart className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                </div>
-                <span>我的收藏</span>
-              </a>
             </div>
             
             {/* 退出登录 */}
