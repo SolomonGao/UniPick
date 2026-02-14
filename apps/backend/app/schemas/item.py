@@ -25,6 +25,7 @@ class ItemResponse(ItemBase):
     id: int
     user_id: UUID
     images: List[str]
+    view_count: int = 0
     created_at: Optional[datetime] = None
 
     class Config:

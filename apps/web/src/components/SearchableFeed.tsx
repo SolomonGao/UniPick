@@ -6,6 +6,7 @@ import { API_ENDPOINTS } from '../lib/constants';
 import { getUserLocation, saveUserLocation, getLocationDisplay, formatDistance } from '../lib/geo';
 import { supabase } from '../lib/supabase';
 import SearchBar, { type SearchFilters } from './SearchBar';
+import ItemStats from './ItemStats';
 
 // 定义接口
 interface Item {
@@ -22,6 +23,7 @@ interface Item {
   distance_display?: string;
   location_fuzzy?: string;
   user_id?: string;
+  view_count?: number;
 }
 
 // 每次请求的数量
@@ -343,6 +345,10 @@ function FeedContent() {
                       <span>{item.distance_display}</span>
                     </div>
                   )}
+                  {/* 浏览量和收藏数 */}
+                  <div className="mt-2">
+                    <ItemStats itemId={item.id} showFavorite={true} size="sm" />
+                  </div>
                 </div>
               </a>
             );

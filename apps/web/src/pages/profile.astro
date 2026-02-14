@@ -1,0 +1,14 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Providers from '../components/Providers';
+import AuthGuard from '../components/AuthGuard';
+import Profile from '../components/Profile';
+---
+
+<Layout title="个人中心 - UniPick">
+  <Providers client:only="react">
+    <AuthGuard client:only="react" redirectTo="/login">
+      <Profile client:only="react" />
+    </AuthGuard>
+  </Providers>
+</Layout>
