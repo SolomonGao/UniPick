@@ -1,16 +1,7 @@
 import React, { useEffect, useState, useCallback, memo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
-import { 
-  MapPin, 
-  Navigation, 
-  Heart, 
-  Eye, 
-  Clock,
-  Sparkles,
-  TrendingUp,
-  Zap
-} from 'lucide-react';
+import { MapPin, ArrowUpRight } from 'lucide-react';
 import { API_ENDPOINTS } from '../lib/constants';
 import { getUserLocation, saveUserLocation } from '../lib/geo';
 import { supabase } from '../lib/supabase';
@@ -38,183 +29,65 @@ interface Item {
 
 const PAGE_SIZE = 12;
 
-// 🎨 分类颜色映射 - 鲜艳渐变
-const CATEGORY_STYLES: Record<string, { 
-  gradient: string; 
-  icon: string;
-  glow: string;
-}> = {
-  electronics: { 
-    gradient: 'from-violet-500 via-purple-500 to-fuchsia-500',
-    icon: '💻',
-    glow: 'shadow-violet-500/30'
-  },
-  furniture: { 
-    gradient: 'from-amber-500 via-orange-500 to-red-500',
-    icon: '🪑',
-    glow: 'shadow-orange-500/30'
-  },
-  books: { 
-    gradient: 'from-emerald-500 via-teal-500 to-cyan-500',
-    icon: '📚',
-    glow: 'shadow-emerald-500/30'
-  },
-  clothing: { 
-    gradient: 'from-pink-500 via-rose-500 to-red-500',
-    icon: '👕',
-    glow: 'shadow-pink-500/30'
-  },
-  sports: { 
-    gradient: 'from-blue-500 via-indigo-500 to-violet-500',
-    icon: '⚽',
-    glow: 'shadow-blue-500/30'
-  },
-  others: { 
-    gradient: 'from-gray-500 via-slate-500 to-zinc-500',
-    icon: '📦',
-    glow: 'shadow-gray-500/30'
-  },
-};
-
-// ✨ 特色卡片 - 大卡片设计
-const FeaturedCard = memo(({ item, index }: { item: Item; index: number }) => {
+// 极简商品卡片 - 几何线条设计
+const ItemCard = memo(({ 
+  item, 
+  index,
+  featured = false
+}: { 
+  item: Item; 
+  index: number;
+  featured?: boolean;
+}) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const categoryStyle = CATEGORY_STYLES[item.category || 'others'] || CATEGORY_STYLES.others;
-  
-  const timeAgo = item.created_at ? 
-    new Date(item.created_at).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }) : 
-    '最近';
 
   return (
     <a 
       href={`/items/${item.id}`}
-      className={`group relative block ${index === 0 ? 'col-span-2 row-span-2' : 'col-span-1 row-span-1'} animate-fade-in`}
-      style={{ animationDelay: `${index * 100}ms` }}
+      className="group block animate-fade-in-up"
+      style={{ animationDelay: `${index * 80}ms` }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div 
-        className={`relative h-full min-h-[300px] ${index === 0 ? 'min-h-[500px]' : ''} rounded-3xl overflow-hidden 
-          bg-gradient-to-br ${categoryStyle.gradient} p-[2px] 
-          transition-all duration-500 ease-out
-          ${isHovered ? 'scale-[1.02] rotate-1' : 'scale-100 rotate-0'}
-        `}
-      >
-        {/* 内部卡片 */}
-        <div className="relative h-full bg-gray-900 rounded-3xl overflow-hidden">
-          {/* 图片 */}
-          <div className="absolute inset-0">
-            {!imageLoaded && (
-              <div className="absolute inset-0 bg-gray-800 animate-pulse" />
-            )}
-            {item.images?.[0] ? (
-              <img 
-                src={item.images[0]} 
-                alt={item.title}
-                loading="lazy"
-                onLoad={() => setImageLoaded(true)}
-                className={`w-full h-full object-cover transition-all duration-700 ${
-                  imageLoaded ? 'opacity-100' : 'opacity-0'
-                } ${isHovered ? 'scale-110' : 'scale-100'}`}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                <span className="text-6xl">{categoryStyle.icon}</span>
-              </div>
-            )}
-            
-            {/* 渐变遮罩 */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-80" />
-          </div>
+      <div className={`
+        relative bg-white dark:bg-neutral-900
+        ${featured ? 'aspect-[4/5]' : 'aspect-square'}
+        overflow-hidden
+        border border-neutral-200 dark:border-neutral-800
+        transition-all duration-500 ease-out
+        ${isHovered ? 'border-black dark:border-white' : ''}
+      `}>
+        {/* 几何装饰角 */}
+        <div className={`
+          absolute top-0 left-0 w-4 h-4 border-l-2 border-t-2 
+          border-neutral-300 dark:border-neutral-700
+          transition-all duration-300
+          ${isHovered ? 'w-6 h-6 border-black dark:border-white' : ''}
+        `} />
+        <div className={`
+          absolute top-0 right-0 w-4 h-4 border-r-2 border-t-2
+          border-neutral-300 dark:border-neutral-700
+          transition-all duration-300
+          ${isHovered ? 'w-6 h-6 border-black dark:border-white' : ''}
+        `} />
+        <div className={`
+          absolute bottom-0 left-0 w-4 h-4 border-l-2 border-b-2
+          border-neutral-300 dark:border-neutral-700
+          transition-all duration-300
+          ${isHovered ? 'w-6 h-6 border-black dark:border-white' : ''}
+        `} />
+        <div className={`
+          absolute bottom-0 right-0 w-4 h-4 border-r-2 border-b-2
+          border-neutral-300 dark:border-neutral-700
+          transition-all duration-300
+          ${isHovered ? 'w-6 h-6 border-black dark:border-white' : ''}
+        `} />
 
-          {/* 内容 */}
-          <div className="absolute inset-0 p-5 flex flex-col justify-between">
-            {/* 顶部标签 */}
-            <div className="flex justify-between items-start">
-              <div className={`px-3 py-1.5 rounded-full bg-gradient-to-r ${categoryStyle.gradient} text-white text-sm font-bold shadow-lg`}>
-                <span className="mr-1">{categoryStyle.icon}</span>
-                {item.category || '其他'}
-              </div>
-              
-              {item.distance_display && (
-                <div className="px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-white text-xs font-medium border border-white/20">
-                  <Navigation className="w-3 h-3 inline mr-1" />
-                  {item.distance_display}
-                </div>
-              )}
-            </div>
-
-            {/* 底部信息 */}
-            <div>
-              {/* 价格 - 大字体 */}
-              <div className="mb-3">
-                <span className={`text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r ${categoryStyle.gradient}`}>
-                  ${item.price}
-                </span>
-              </div>
-
-              {/* 标题 */}
-              <h3 className={`font-bold text-white mb-2 line-clamp-2 ${index === 0 ? 'text-2xl' : 'text-lg'}`}>
-                {item.title}
-              </h3>
-
-              {/* 统计 */}
-              <div className="flex items-center gap-4 text-white/70 text-sm">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-4 h-4" />
-                  {item.location_fuzzy || item.location_name || 'VT Campus'}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Eye className="w-4 h-4" />
-                  {item.view_count || 0}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Heart className="w-4 h-4" />
-                  {item.favorite_count || 0}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* 悬停光效 */}
-          <div 
-            className={`absolute inset-0 bg-gradient-to-t ${categoryStyle.gradient} opacity-0 transition-opacity duration-500 pointer-events-none
-              ${isHovered ? 'opacity-20' : ''}
-            `} 
-          />
-        </div>
-      </div>
-    </a>
-  );
-});
-
-// 🎨 普通卡片 - 玻璃拟态风格
-const RegularCard = memo(({ item, index }: { item: Item; index: number }) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const categoryStyle = CATEGORY_STYLES[item.category || 'others'] || CATEGORY_STYLES.others;
-
-  return (
-    <a 
-      href={`/items/${item.id}`}
-      className="group block animate-fade-in"
-      style={{ animationDelay: `${index * 50}ms` }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div 
-        className={`relative bg-white dark:bg-gray-800/50 rounded-2xl overflow-hidden 
-          border border-gray-200 dark:border-gray-700/50
-          backdrop-blur-xl
-          transition-all duration-300 ease-out
-          ${isHovered ? 'shadow-2xl ' + categoryStyle.glow + ' -translate-y-2' : 'shadow-lg'}
-        `}
-      >
-        {/* 图片容器 */}
-        <div className="relative aspect-[4/3] overflow-hidden">
-          {!imageLoaded && (
-            <div className="absolute inset-0 bg-gray-200 dark:bg-gray-700 animate-pulse" />
+        {/* 图片区域 */}
+        <div className="absolute inset-4 overflow-hidden">
+          {!imageLoaded && item.images?.[0] && (
+            <div className="absolute inset-0 skeleton" />
           )}
           
           {item.images?.[0] ? (
@@ -223,47 +96,65 @@ const RegularCard = memo(({ item, index }: { item: Item; index: number }) => {
               alt={item.title}
               loading="lazy"
               onLoad={() => setImageLoaded(true)}
-              className={`w-full h-full object-cover transition-all duration-500 ${
-                imageLoaded ? 'opacity-100' : 'opacity-0'
-              } ${isHovered ? 'scale-110' : 'scale-100'}`}
+              className={`
+                w-full h-full object-cover
+                transition-all duration-700 ease-out
+                ${imageLoaded ? 'opacity-100' : 'opacity-0'}
+                ${isHovered ? 'scale-105 grayscale-0' : 'scale-100 grayscale-[20%]'}
+              `}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-              <span className="text-4xl">{categoryStyle.icon}</span>
+            <div className="w-full h-full flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+              <span className="text-4xl tracking-widest font-light text-neutral-400">{String(item.id).padStart(3, '0')}</span>
             </div>
           )}
 
-          {/* 价格标签 */}
-          <div className={`absolute top-3 right-3 px-3 py-1 rounded-full 
-            bg-gradient-to-r ${categoryStyle.gradient} text-white font-bold text-sm shadow-lg
-            transform transition-transform ${isHovered ? 'scale-110' : 'scale-100'}
-          `}>
-            ${item.price}
-          </div>
-
-          {/* 分类标签 */}
-          <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm flex items-center justify-center text-lg shadow-md">
-            {categoryStyle.icon}
-          </div>
+          {/* 悬停遮罩 */}
+          <div className={`
+            absolute inset-0 bg-black/0 transition-all duration-500
+            ${isHovered ? 'bg-black/20' : ''}
+          `} />
         </div>
 
-        {/* 内容 */}
-        <div className="p-4">
-          <h3 className="font-semibold text-gray-900 dark:text-white line-clamp-1 mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-orange-500 group-hover:to-red-500 transition-all">
+        {/* 顶部信息栏 */}
+        <div className="absolute top-0 left-0 right-0 flex justify-between items-start p-4">
+          {/* 分类标签 */}
+          <span className="text-[10px] font-semibold tracking-[0.2em] uppercase text-neutral-500 dark:text-neutral-400">
+            {item.category || 'ITEM'}
+          </span>
+
+          {/* 编号 */}
+          <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-600">
+            #{String(item.id).padStart(3, '0')}
+          </span>
+        </div>
+
+        {/* 底部信息 */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-white dark:bg-neutral-900">
+          {/* 价格 - 大字体 */}
+          <div className="flex items-baseline justify-between mb-2">
+            <span className="text-2xl font-bold tracking-tight text-black dark:text-white">
+              ${item.price.toLocaleString()}
+            </span>
+            <ArrowUpRight 
+              className={`
+                w-5 h-5 transition-all duration-300
+                ${isHovered ? 'text-black dark:text-white translate-x-0.5 -translate-y-0.5' : 'text-neutral-300'}
+              `} 
+            />
+          </div>
+
+          {/* 标题 */}
+          <h3 className="text-sm font-medium text-neutral-700 dark:text-neutral-300 line-clamp-1 mb-2"
+003e
             {item.title}
           </h3>
-          
-          <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5" />
-              {item.location_fuzzy || 'VT'}
-            </span>
-            {item.distance_display && (
-              <span className="flex items-center gap-1 text-orange-500">
-                <Navigation className="w-3.5 h-3.5" />
-                {item.distance_display}
-              </span>
-            )}
+
+          {/* 位置 */}
+          <div className="flex items-center gap-1 text-[11px] tracking-wide text-neutral-400 dark:text-neutral-500 uppercase"
+003e
+            <MapPin className="w-3 h-3" />
+            {item.location_fuzzy || item.location_name || 'VT Campus'}
           </div>
         </div>
       </div>
@@ -271,50 +162,125 @@ const RegularCard = memo(({ item, index }: { item: Item; index: number }) => {
   );
 });
 
-// 空状态
+// 特色大卡片
+const FeaturedCard = memo(({ item }: { item: Item }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <a 
+      href={`/items/${item.id}`}
+      className="group block col-span-2 row-span-2"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="relative h-full min-h-[400px] lg:min-h-[500px] bg-white dark:bg-neutral-900 overflow-hidden border border-neutral-200 dark:border-neutral-800 transition-all duration-500 hover:border-black dark:hover:border-white"
+003e
+        {/* 大图 */}
+        <div className="absolute inset-0"
+003e
+          {item.images?.[0] ? (
+            <img 
+              src={item.images[0]} 
+              alt={item.title}
+              className={`w-full h-full object-cover transition-all duration-700 ${isHovered ? 'scale-105 grayscale-0' : 'scale-100 grayscale-[10%]'}`}
+            /
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-neutral-100 dark:bg-neutral-800"
+003e
+              <span className="text-[120px] font-light text-neutral-200 dark:text-neutral-700 tracking-widest"
+003e{String(item.id).padStart(3, '0')}</span>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" /
+        </div>
+
+        {/* 角标 */}
+        <div className="absolute top-6 left-6"
+003e
+          <span className="text-[10px] font-semibold tracking-[0.3em] uppercase text-white/80 bg-black/30 backdrop-blur-sm px-3 py-1.5"
+003e
+            Featured
+          </span>
+        </div>
+
+        {/* 编号 */}
+        <div className="absolute top-6 right-6"
+003e
+          <span className="text-[10px] font-mono text-white/60"
+003e
+            #{String(item.id).padStart(3, '0')}
+          </span>
+        </div>
+
+        {/* 底部信息 */}
+        <div className="absolute bottom-0 left-0 right-0 p-8"
+003e
+          <div className="flex items-end justify-between"
+003e
+            <div>
+              <span className="text-[10px] font-semibold tracking-[0.2em] uppercase text-white/60 mb-2 block"
+003e
+                {item.category || 'ITEM'}
+              </span>
+              <h2 className="text-3xl lg:text-4xl font-bold text-white mb-2 tracking-tight"
+003e
+                {item.title}
+              </h2>
+              <div className="flex items-center gap-2 text-white/60 text-sm"
+003e
+                <MapPin className="w-4 h-4" />
+                {item.location_fuzzy || item.location_name || 'VT Campus'}
+              </div>
+            </div>
+            
+            <div className="text-right"
+003e
+              <span className="text-4xl lg:text-5xl font-bold text-white"
+003e
+                ${item.price.toLocaleString()}
+              </span>
+              <ArrowUpRight 
+                className={`w-8 h-8 text-white transition-all duration-300 inline-block ml-2 ${isHovered ? 'translate-x-1 -translate-y-1' : ''}`}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </a>
+  );
+});
+
+// 空状态 - 极简
 const EmptyState = memo(() => (
-  <div className="flex flex-col items-center justify-center py-20 px-4 text-center animate-fade-in">
-    <div className="w-32 h-32 bg-gradient-to-br from-orange-400 to-pink-500 rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-orange-500/30 rotate-3">
-      <Sparkles className="w-16 h-16 text-white" />
-    </div>
-    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-      发现好物
-    </h3>
-    <p className="text-gray-500 dark:text-gray-400 max-w-sm">
-      还没有找到心仪的商品？尝试调整筛选条件或搜索其他关键词
+  <div className="flex flex-col items-center justify-center py-32 px-4"
+003e
+    <div className="w-px h-16 bg-neutral-300 dark:bg-neutral-700 mb-8" />
+    <p className="text-sm tracking-[0.2em] uppercase text-neutral-400 mb-2"
+003e
+      No Items Found
+    </p>
+    <p className="text-neutral-500 dark:text-neutral-600"
+003e
+      尝试调整搜索条件
     </p>
   </div>
 ));
 
-// 加载骨架屏
+// 骨架屏 - 极简
 const SkeletonGrid = memo(() => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+003e
     {Array.from({ length: 8 }).map((_, i) => (
-      <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg">
-        <div className="aspect-[4/3] skeleton" />
-        <div className="p-4 space-y-3">
-          <div className="h-5 skeleton w-3/4 rounded-lg" />
-          <div className="h-4 skeleton w-1/2 rounded-lg" />
+      <div key={i} className="aspect-square border border-neutral-200 dark:border-neutral-800"
+003e
+        <div className="h-3/4 skeleton" />
+        <div className="h-1/4 p-4 space-y-2"
+003e
+          <div className="h-6 skeleton w-1/3" />
+          <div className="h-4 skeleton w-2/3" />
         </div>
       </div>
     ))}
-  </div>
-));
-
-// 统计横幅
-const StatsBanner = memo(({ total }: { total: number }) => (
-  <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 rounded-2xl text-white mb-6 shadow-xl shadow-orange-500/20">
-    <div className="flex items-center gap-2">
-      <TrendingUp className="w-5 h-5" />
-      <span className="font-medium">热门商品</span>
-    </div>
-    <div className="flex items-center gap-4">
-      <span className="text-white/80">共 {total} 件商品</span>
-      <div className="flex items-center gap-1 px-3 py-1 bg-white/20 rounded-full text-sm">
-        <Zap className="w-4 h-4" />
-        <span>实时更新</span>
-      </div>
-    </div>
   </div>
 ));
 
@@ -433,78 +399,111 @@ export default function SearchableFeed() {
     });
   }, [data?.pages, currentUserId]);
 
-  // 分离特色商品和普通商品
-  const featuredItems = sortedItems.slice(0, 3);
-  const regularItems = sortedItems.slice(3);
+  const featuredItems = sortedItems.slice(0, 2);
+  const regularItems = sortedItems.slice(2);
 
   if (status === 'pending') return <SkeletonGrid />;
   
   if (status === 'error') {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <div className="text-red-500 mb-4">加载失败: {(error as Error).message}</div>
-        <button onClick={() => window.location.reload()} className="btn btn-primary">
-          重试
-        </button>
+      <div className="flex flex-col items-center justify-center py-32"
+003e
+        <div className="w-px h-16 bg-neutral-300 dark:bg-neutral-700 mb-8" />
+        <p className="text-neutral-500">加载失败: {(error as Error).message}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 pb-10">
-      {/* 搜索栏 */}
-      <SearchBar 
-        onSearch={handleSearch} 
-        initialFilters={filters}
-        userLocation={userLocation}
-        onRefreshLocation={fetchUserLocation}
-        isLocating={isLocating}
-      />
+    <div className="max-w-7xl mx-auto px-6 py-12"
+003e
+      {/* 标题区域 */}
+      <div className="mb-16"
+003e
+        <h1 className="heading-lg text-black dark:text-white mb-4"
+003e
+          MARKETPLACE
+        </h1>
+        <p className="text-sm tracking-[0.2em] uppercase text-neutral-500"
+003e
+          {sortedItems.length} Items Available
+        </p>
+      </div>
 
-      {/* 统计横幅 */}
-      {sortedItems.length > 0 && <StatsBanner total={sortedItems.length} />}
+      {/* 搜索栏 */}
+      <div className="mb-12">
+        <SearchBar 
+          onSearch={handleSearch} 
+          initialFilters={filters}
+          userLocation={userLocation}
+          onRefreshLocation={fetchUserLocation}
+          isLocating={isLocating}
+        />
+      </div>
 
       {sortedItems.length === 0 ? (
         <EmptyState />
       ) : (
         <>
-          {/* 特色商品区域 - Bento Grid 布局 */}
+          {/* 特色商品 - 大卡片 */}
           {featuredItems.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-orange-500" />
-                精选推荐
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[250px]">
-                {featuredItems.map((item, index) => (
-                  <FeaturedCard key={item.id} item={item} index={index} />
+            <div className="mb-12"
+003e
+              <div className="flex items-center justify-between mb-6"
+003e
+                <span className="text-[10px] font-semibold tracking-[0.3em] uppercase text-neutral-400"
+003e
+                  Featured
+                </span>
+                <div className="flex-1 h-px bg-neutral-200 dark:bg-neutral-800 ml-6" />
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+003e
+                {featuredItems.map((item) => (
+                  <FeaturedCard key={item.id} item={item} />
                 ))}
               </div>
             </div>
           )}
 
-          {/* 普通商品 - 瀑布流布局 */}
-          {regularItems.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                更多商品
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {regularItems.map((item, index) => (
-                  <RegularCard key={item.id} item={item} index={index} />
-                ))}
-              </div>
-            </div>
-          )}
+          {/* 分隔线 */}
+          <div className="flex items-center gap-4 mb-12"
+003e
+            <div className="flex-1 h-px bg-neutral-200 dark:bg-neutral-800" />
+            <span className="text-[10px] font-semibold tracking-[0.3em] uppercase text-neutral-400"
+003e
+              All Items
+            </span>
+            <div className="flex-1 h-px bg-neutral-200 dark:bg-neutral-800" />
+          </div>
+
+          {/* 普通商品 - 网格布局 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+003e
+            {regularItems.map((item, index) => (
+              <ItemCard key={item.id} item={item} index={index} />
+            ))}
+          </div>
 
           {/* 加载更多 */}
-          <div ref={ref} className="flex justify-center items-center py-8 h-20">
+          <div ref={ref} className="flex justify-center items-center py-16"
+003e
             {isFetchingNextPage ? (
-              <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
+              <div className="w-px h-8 bg-black dark:bg-white animate-pulse" />
             ) : hasNextPage ? (
-              <span className="text-gray-400 text-sm">向下滚动加载更多</span>
+              <span className="text-[10px] tracking-[0.2em] uppercase text-neutral-400"
+003e
+                Scroll for more
+              </span>
             ) : sortedItems.length > 0 && (
-              <span className="text-gray-400 text-sm">—— 没有更多了 ——</span>
+              <div className="flex items-center gap-4"
+003e
+                <div className="w-16 h-px bg-neutral-300 dark:bg-neutral-700" />
+                <span className="text-[10px] tracking-[0.2em] uppercase text-neutral-400"
+003eEnd</span>
+                <div className="w-16 h-px bg-neutral-300 dark:bg-neutral-700" />
+              </div>
             )}
           </div>
         </>
