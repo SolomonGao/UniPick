@@ -64,7 +64,7 @@ const ItemCard = memo(({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="card card-hover relative">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative">
         {/* 图片容器 */}
         <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900">
           {/* 骨架屏 */}
@@ -186,7 +186,7 @@ const EmptyState = memo(() => (
 const SkeletonGrid = memo(() => (
   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
     {Array.from({ length: 8 }).map((_, i) => (
-      <div key={i} className="card overflow-hidden">
+      <div key={i} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
         <div className="aspect-[4/3] skeleton" />
         <div className="p-4 space-y-3">
           <div className="h-5 skeleton w-3/4" />

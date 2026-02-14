@@ -399,6 +399,16 @@ body {
   border-radius: var(--radius-md);
 }
 
+[data-theme="dark"] .skeleton {
+  background: linear-gradient(
+    90deg,
+    #333333 25%,
+    #444444 50%,
+    #333333 75%
+  );
+  background-size: 200% 100%;
+}
+
 /* 渐入动画 */
 @keyframes fadeIn {
   from {
