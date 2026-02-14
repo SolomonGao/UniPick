@@ -344,7 +344,7 @@ export default function SearchableFeed() {
           找到 <span className="font-semibold text-gray-900 dark:text-white">{sortedItems.length}</span> 个商品
         </p>
         {currentUserId && sortedItems.some(i => i.user_id === currentUserId) && (
-          <p className="text-xs text-gray-400">自己发布的商品显示在最后</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500">自己发布的商品显示在最后</p>
         )}
       </div>
 
@@ -369,9 +369,9 @@ export default function SearchableFeed() {
             {isFetchingNextPage ? (
               <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
             ) : hasNextPage ? (
-              <span className="text-gray-400 text-sm">向下滚动加载更多</span>
+              <span className="text-gray-400 dark:text-gray-500 text-sm">向下滚动加载更多</span>
             ) : sortedItems.length > 0 && (
-              <span className="text-gray-400 text-sm">—— 没有更多了 ——</span>
+              <span className="text-gray-400 dark:text-gray-500 text-sm">—— 没有更多了 ——</span>
             )}
           </div>
         </>
