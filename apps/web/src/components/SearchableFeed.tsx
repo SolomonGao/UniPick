@@ -30,18 +30,18 @@ interface Item {
 const PAGE_SIZE = 12;
 
 // 高级极简商品卡片
-const ItemCard = memo(({ 
-  item, 
-  index 
-}: { 
-  item: Item; 
+const ItemCard = memo(({
+  item,
+  index
+}: {
+  item: Item;
   index: number;
 }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <a 
+    <a
       href={`/items/${item.id}`}
       className="group block animate-fade-in-up"
       style={{ animationDelay: `${index * 100}ms` }}
@@ -54,10 +54,10 @@ const ItemCard = memo(({
           {!imageLoaded && item.images?.[0] && (
             <div className="absolute inset-0 skeleton" />
           )}
-          
+
           {item.images?.[0] ? (
-            <img 
-              src={item.images[0]} 
+            <img
+              src={item.images[0]}
               alt={item.title}
               loading="lazy"
               onLoad={() => setImageLoaded(true)}
@@ -67,7 +67,7 @@ const ItemCard = memo(({
                 ${imageLoaded ? 'opacity-100' : 'opacity-0'}
                 ${isHovered ? 'scale-105' : 'scale-100'}
               `}
-            /
+            />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
               <span className="text-4xl font-light text-gray-300">{String(item.id).padStart(3, '0')}</span>
@@ -122,7 +122,7 @@ const FeaturedCard = memo(({ item }: { item: Item }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <a 
+    <a
       href={`/items/${item.id}`}
       className="group block col-span-2 row-span-2"
       onMouseEnter={() => setIsHovered(true)}
@@ -132,17 +132,17 @@ const FeaturedCard = memo(({ item }: { item: Item }) => {
         {/* 图片 */}
         <div className="absolute inset-0">
           {item.images?.[0] ? (
-            <img 
-              src={item.images[0]} 
+            <img
+              src={item.images[0]}
               alt={item.title}
               className={`w-full h-full object-cover transition-all duration-700 ${isHovered ? 'scale-105' : 'scale-100'}`}
-            /
+            />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
               <span className="text-[120px] font-light text-gray-200 dark:text-gray-700">{String(item.id).padStart(3, '0')}</span>
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" /
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         </div>
 
         {/* 左上角标签 */}
@@ -172,7 +172,7 @@ const FeaturedCard = memo(({ item }: { item: Item }) => {
                 {item.location_fuzzy || item.location_name || 'VT Campus'}
               </div>
             </div>
-            
+
             <div className="text-right">
               <span className="text-5xl font-semibold">${item.price.toLocaleString()}</span>
             </div>
@@ -217,7 +217,7 @@ export default function SearchableFeed() {
     radius: 10,
     sortBy: 'created_at',
   });
-  
+
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -246,12 +246,12 @@ export default function SearchableFeed() {
           return;
         }
       }
-      
+
       if (!navigator.geolocation) {
         setIsLocating(false);
         return;
       }
-      
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
@@ -276,12 +276,12 @@ export default function SearchableFeed() {
     queryFn: async ({ pageParam = 0 }) => {
       const skip = pageParam * PAGE_SIZE;
       const params = new URLSearchParams({ skip: skip.toString(), limit: PAGE_SIZE.toString() });
-      
+
       if (filters.keyword) params.append('keyword', filters.keyword);
       if (filters.minPrice) params.append('min_price', filters.minPrice.toString());
       if (filters.maxPrice) params.append('max_price', filters.maxPrice.toString());
       if (filters.category) params.append('category', filters.category);
-      
+
       if (userLocation && filters.useLocation !== false) {
         params.append('lat', userLocation.lat.toString());
         params.append('lng', userLocation.lng.toString());
@@ -291,7 +291,7 @@ export default function SearchableFeed() {
           params.append('sort_order', 'asc');
         }
       }
-      
+
       const response = await fetch(`${API_ENDPOINTS.items}/?${params}`);
       if (!response.ok) throw new Error('Failed to fetch items');
       return response.json();
@@ -326,7 +326,7 @@ export default function SearchableFeed() {
   const regularItems = sortedItems.slice(2);
 
   if (status === 'pending') return <SkeletonGrid />;
-  
+
   if (status === 'error') {
     return (
       <div className="flex flex-col items-center justify-center py-32">
@@ -356,8 +356,8 @@ export default function SearchableFeed() {
 
       {/* 搜索栏 */}
       <div className="mb-16 max-w-3xl mx-auto">
-        <SearchBar 
-          onSearch={handleSearch} 
+        <SearchBar
+          onSearch={handleSearch}
           initialFilters={filters}
           userLocation={userLocation}
           onRefreshLocation={fetchUserLocation}
@@ -378,7 +378,7 @@ export default function SearchableFeed() {
                 </h2>
                 <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800 ml-6" />
               </div>
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {featuredItems.map((item) => (
                   <FeaturedCard key={item.id} item={item} />
