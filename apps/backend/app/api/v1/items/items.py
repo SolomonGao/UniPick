@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func, distinct
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -47,11 +47,7 @@ def get_fuzzy_location(distance_km: float) -> str:
 
 
 def extract_zip_code(location_name: str) -> str:
-    """从地址中提取邮政编码（ZIP code）
-    
-    美国邮政编码格式：5位数字 或 5位-4位数字
-    例如：24060, 24060-1234
-    """
+    """从地址中提取邮政编码（ZIP code）"""
     if not location_name:
         return "VT Campus Area"
     
@@ -78,6 +74,7 @@ def format_distance(distance_km: float) -> str:
     else:
         return f"{int(distance_miles)} miles"
 
+
 @router.post(
     "/",
     response_model=ItemResponse,
@@ -94,17 +91,7 @@ async def create_item(
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id)
 ):
-    """
-    创建新商品
-    - **title**: 商品标题 (2-100字符)
-    - **price**: 价格 (必须大于0)
-    - **description**: 商品描述 (可选)
-    - **category**: 商品分类 (可选)
-    - **location_name**: 位置名称 (可选)
-    - **latitude**: 纬度 (-90 到 90)
-    - **longitude**: 经度 (-180 到 180)
-    - **images**: 图片URL列表
-    """
+    """创建新商品"""
     try:
         # 验证分类
         if item_in.category and item_in.category not in VALID_CATEGORIES:
@@ -174,6 +161,7 @@ async def create_item(
             }
         )
 
+
 @router.get(
     "/",
     response_model=List[ItemResponse],
@@ -184,6 +172,7 @@ async def create_item(
 )
 async def list_items(
     db: AsyncSession = Depends(get_db),
+    current_user_id: Optional[str] = Depends(get_current_user_id_optional), # 修复：注入当前用户以便判断权限
     skip: int = Query(0, ge=0, description="跳过记录数"),
     limit: int = Query(12, ge=1, le=100, description="返回记录数限制"),
     keyword: Optional[str] = Query(None, max_length=100, description="关键词搜索"),
@@ -198,77 +187,29 @@ async def list_items(
     exclude_user_id: Optional[str] = Query(None, description="排除指定用户的商品"),
     user_id: Optional[str] = Query(None, description="只显示指定用户的商品"),
 ):
-    """
-    搜索商品列表，支持：
-    - 分页: skip, limit
-    - 关键词: keyword (搜索 title 和 description)
-    - 价格范围: min_price, max_price
-    - 分类: category
-    - 地理位置: lat, lng, radius (km)
-    - 排序: sort_by (price/created_at/distance), sort_order (asc/desc)
-    
-    当提供 lat/lng 时，返回结果会包含：
-    - distance: 距离（km）
-    - distance_display: 格式化距离
-    - location_fuzzy: 模糊位置描述
-    """
-    # 参数验证
+    """搜索商品列表"""
+    # ...参数验证...
     if sort_by and sort_by not in VALID_SORT_FIELDS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": "InvalidSortField",
-                "message": f"无效的排序字段: {sort_by}",
-                "details": {"valid_fields": list(VALID_SORT_FIELDS)}
-            }
-        )
-    
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的排序字段")
     if sort_order and sort_order.lower() not in VALID_SORT_ORDERS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": "InvalidSortOrder",
-                "message": f"无效的排序方向: {sort_order}",
-                "details": {"valid_orders": list(VALID_SORT_ORDERS)}
-            }
-        )
-    
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的排序方向")
     if category and category not in VALID_CATEGORIES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": "InvalidCategory",
-                "message": f"无效的分类: {category}",
-                "details": {"valid_categories": list(VALID_CATEGORIES)}
-            }
-        )
-    
-    # 验证价格范围逻辑
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的分类")
     if min_price is not None and max_price is not None and min_price > max_price:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": "InvalidPriceRange",
-                "message": "最低价格不能大于最高价格",
-                "details": {"min_price": min_price, "max_price": max_price}
-            }
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="最低价格不能大于最高价格")
     
-    # 验证地理位置参数完整性
     geo_params = [lat, lng, radius]
     if any(geo_params) and not all(geo_params):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": "IncompleteGeoParams",
-                "message": "地理位置搜索需要同时提供 lat, lng 和 radius",
-                "details": {"provided": {"lat": lat, "lng": lng, "radius": radius}}
-            }
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="地理位置搜索需要 lat, lng 和 radius")
     
     try:
-        # 先获取商品列表（不含收藏数，避免子查询问题）
-        query = select(Item)
+        # 修复2：N+1查询问题。将计算距离直接整合在主查询的 select 语句中
+        if lat is not None and lng is not None:
+            point = func.ST_GeogFromText(f"POINT({lng} {lat})")
+            distance_expr = (func.ST_Distance(Item.location, point) / 1000).label("distance")
+            query = select(Item, distance_expr)
+        else:
+            query = select(Item)
         
         # 关键词搜索
         if keyword:
@@ -278,55 +219,38 @@ async def list_items(
             )
             query = query.where(search_filter)
         
-        # 排除指定用户的商品（优先显示其他卖家的）
         if exclude_user_id:
             query = query.where(Item.user_id != exclude_user_id)
-        
-        # 只显示指定用户的商品
         if user_id:
             query = query.where(Item.user_id == user_id)
-        
-        # 价格范围
         if min_price is not None:
             query = query.where(Item.price >= min_price)
         if max_price is not None:
             query = query.where(Item.price <= max_price)
-        
-        # 分类筛选
         if category:
             query = query.where(Item.category == category)
         
         # 地理位置筛选 (PostGIS)
         if lat is not None and lng is not None and radius is not None:
-            # 使用 PostGIS ST_DWithin 计算距离
             point = func.ST_GeogFromText(f"POINT({lng} {lat})")
-            query = query.where(
-                func.ST_DWithin(
-                    Item.location,
-                    point,
-                    radius * 1000  # 转换为米
-                )
-            )
+            query = query.where(func.ST_DWithin(Item.location, point, radius * 1000))
         
         # 排序逻辑
         if lat is not None and lng is not None and sort_by == "distance":
-            # 按距离排序
             point = func.ST_GeogFromText(f"POINT({lng} {lat})")
-            distance_expr = func.ST_Distance(Item.location, point) / 1000
+            distance_expr_sort = func.ST_Distance(Item.location, point) / 1000
             sort_order_lower = sort_order.lower() if sort_order else "asc"
             if sort_order_lower == "desc":
-                query = query.order_by(distance_expr.desc())
+                query = query.order_by(distance_expr_sort.desc())
             else:
-                query = query.order_by(distance_expr.asc())
+                query = query.order_by(distance_expr_sort.asc())
         else:
-            # 默认按创建时间或价格排序
             order_column = Item.created_at
             if sort_by == "price":
                 order_column = Item.price
             elif sort_by == "created_at":
                 order_column = Item.created_at
             
-            # 排序方向
             sort_order_lower = sort_order.lower() if sort_order else "desc"
             if sort_order_lower == "asc":
                 query = query.order_by(order_column.asc())
@@ -337,9 +261,17 @@ async def list_items(
         query = query.offset(skip).limit(limit)
         
         result = await db.execute(query)
-        items = result.scalars().all()
         
-        # 获取收藏数（单独查询避免子查询问题）
+        # 解析数据，避免 N+1
+        if lat is not None and lng is not None:
+            rows = result.all()
+            items = [row[0] for row in rows]
+            distances = {row[0].id: row[1] for row in rows}
+        else:
+            items = result.scalars().all()
+            distances = {}
+        
+        # 获取收藏数
         item_ids = [item.id for item in items]
         if item_ids:
             fav_query = select(
@@ -352,93 +284,50 @@ async def list_items(
             fav_counts = {}
         
         # 处理结果
-        items_with_distance = []
-        if lat is not None and lng is not None:
-            # 有地理位置，计算距离
-            for item in items:
-                # 计算距离
-                point = func.ST_GeogFromText(f"POINT({lng} {lat})")
-                distance_query = select(func.ST_Distance(Item.location, point) / 1000).where(Item.id == item.id)
-                distance_result = await db.execute(distance_query)
-                distance = distance_result.scalar() or 0
+        items_response = []
+        for item in items:
+            location_name = item.location_name
+            location_fuzzy = None
+            lat_out = item.latitude
+            lng_out = item.longitude
+            
+            # 修复1：严格的隐私保护，如果非主人查询，则对经纬度打码（保留两位小数≈1.1km模糊度）
+            if item.is_location_private and str(item.user_id) != str(current_user_id):
+                location_fuzzy = extract_zip_code(location_name)
+                lat_out = round(item.latitude, 2)
+                lng_out = round(item.longitude, 2)
+            
+            item_dict = {
+                "id": item.id,
+                "title": item.title,
+                "price": item.price,
+                "description": item.description,
+                "location_name": location_name,
+                "category": item.category,
+                "images": item.images,
+                "user_id": item.user_id,
+                "created_at": item.created_at,
+                "latitude": lat_out,
+                "longitude": lng_out,
+                "view_count": item.view_count or 0,
+                "favorite_count": fav_counts.get(item.id, 0),
+                "is_location_private": item.is_location_private,
+                "location_fuzzy": location_fuzzy
+            }
+            
+            if lat is not None and lng is not None:
+                dist = distances.get(item.id, 0)
+                item_dict["distance"] = round(dist, 2)
+                item_dict["distance_display"] = format_distance(dist)
                 
-                # 处理位置保密
-                location_name = item.location_name
-                location_fuzzy = None
-                if item.is_location_private:
-                    location_fuzzy = extract_zip_code(location_name)
-                
-                item_dict = {
-                    "id": item.id,
-                    "title": item.title,
-                    "price": item.price,
-                    "description": item.description,
-                    "location_name": location_name,
-                    "category": item.category,
-                    "images": item.images,
-                    "user_id": item.user_id,
-                    "created_at": item.created_at,
-                    "latitude": item.latitude,
-                    "longitude": item.longitude,
-                    "view_count": item.view_count or 0,
-                    "favorite_count": fav_counts.get(item.id, 0),
-                    "is_location_private": item.is_location_private,
-                    "distance": round(distance, 2),
-                    "distance_display": format_distance(distance),
-                    "location_fuzzy": location_fuzzy
-                }
-                items_with_distance.append(item_dict)
-            return items_with_distance
-        else:
-            # 无距离信息的结果
-            items_list = []
-            for item in items:
-                # 处理位置保密
-                location_name = item.location_name
-                location_fuzzy = None
-                if item.is_location_private:
-                    location_fuzzy = extract_zip_code(location_name)
-                
-                item_dict = {
-                    "id": item.id,
-                    "title": item.title,
-                    "price": item.price,
-                    "description": item.description,
-                    "location_name": location_name,
-                    "category": item.category,
-                    "images": item.images,
-                    "user_id": item.user_id,
-                    "created_at": item.created_at,
-                    "latitude": item.latitude,
-                    "longitude": item.longitude,
-                    "view_count": item.view_count or 0,
-                    "favorite_count": fav_counts.get(item.id, 0),
-                    "is_location_private": item.is_location_private,
-                    "location_fuzzy": location_fuzzy
-                }
-                items_list.append(item_dict)
-            return items_list
+            items_response.append(item_dict)
+            
+        return items_response
         
     except SQLAlchemyError as e:
         logger.error(f"数据库查询错误: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "DatabaseError",
-                "message": "数据库查询失败，请稍后重试",
-                "details": {"error_type": type(e).__name__}
-            }
-        )
-    except Exception as e:
-        logger.error(f"未知错误: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "InternalError",
-                "message": "服务器内部错误",
-                "details": {"error_type": type(e).__name__}
-            }
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="数据库查询失败")
+
 
 @router.get(
     "/{item_id}",
@@ -453,30 +342,25 @@ async def get_item(
     db: AsyncSession = Depends(get_db),
     current_user_id: Optional[str] = Depends(get_current_user_id_optional)
 ):
-    """
-    获取单个商品详情
-    """
+    """获取单个商品详情"""
     try:
         query = select(Item).where(Item.id == item_id)
         result = await db.execute(query)
         item = result.scalar_one_or_none()
         
         if not item:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "error": "ItemNotNotFound",
-                    "message": f"未找到ID为 {item_id} 的商品",
-                    "details": {"item_id": item_id}
-                }
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="商品不存在")
         
-        # 处理位置保密：如果不是自己的商品且设置了保密，显示邮政编码
+        # 修复1：同上，严格处理位置保密，对经纬度进行数学打码
         location_fuzzy = None
+        lat_out = item.latitude
+        lng_out = item.longitude
+        
         if item.is_location_private and str(item.user_id) != str(current_user_id):
             location_fuzzy = extract_zip_code(item.location_name)
+            lat_out = round(item.latitude, 2)
+            lng_out = round(item.longitude, 2)
         
-        # 构建返回数据
         item_dict = {
             "id": item.id,
             "title": item.title,
@@ -487,10 +371,10 @@ async def get_item(
             "images": item.images,
             "user_id": item.user_id,
             "created_at": item.created_at,
-            "latitude": item.latitude,
-            "longitude": item.longitude,
+            "latitude": lat_out,
+            "longitude": lng_out,
             "view_count": item.view_count or 0,
-            "favorite_count": 0,  # 详情页可以额外查询
+            "favorite_count": 0,
             "is_location_private": item.is_location_private,
             "location_fuzzy": location_fuzzy
         }
@@ -501,14 +385,7 @@ async def get_item(
         raise
     except SQLAlchemyError as e:
         logger.error(f"获取商品详情数据库错误: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "DatabaseError",
-                "message": "数据库查询失败，请稍后重试",
-                "details": {"error_type": type(e).__name__}
-            }
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="数据库查询失败")
 
 
 @router.put(
@@ -523,24 +400,15 @@ async def get_item(
 )
 async def update_item(
     item_id: int = Path(..., gt=0, description="商品ID"),
-    item_update: ItemCreate = None,
+    item_update: ItemCreate = Body(...), # 修复4：使用 Body(...) 强制要求请求体，防止发送空 JSON 引发 500 崩溃
     item: Item = Depends(require_item_owner),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    更新商品信息（只有商品所有者可以更新）
-    """
+    """更新商品信息（只有商品所有者可以更新）"""
     try:
         # 验证分类
         if item_update.category and item_update.category not in VALID_CATEGORIES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "error": "InvalidCategory",
-                    "message": f"无效的商品分类: {item_update.category}",
-                    "details": {"valid_categories": list(VALID_CATEGORIES)}
-                }
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的商品分类")
         
         # 更新字段
         item.title = item_update.title
@@ -549,6 +417,9 @@ async def update_item(
         item.category = item_update.category
         item.location_name = item_update.location_name
         item.images = item_update.images
+        
+        # 修复3：补充遗漏的隐私开关状态更新
+        item.is_location_private = item_update.is_location_private
         
         # 更新地理位置
         if item_update.latitude and item_update.longitude:
@@ -565,14 +436,7 @@ async def update_item(
     except SQLAlchemyError as e:
         await db.rollback()
         logger.error(f"更新商品数据库错误: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "DatabaseError",
-                "message": "更新商品失败，请稍后重试",
-                "details": {"error_type": type(e).__name__}
-            }
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="更新商品失败")
 
 
 @router.delete(
@@ -590,11 +454,8 @@ async def delete_item(
     item: Item = Depends(require_item_owner),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    删除商品（只有商品所有者可以删除）
-    """
+    """删除商品（只有商品所有者可以删除）"""
     try:
-        # 删除商品
         await db.delete(item)
         await db.commit()
         
@@ -606,11 +467,4 @@ async def delete_item(
     except SQLAlchemyError as e:
         await db.rollback()
         logger.error(f"删除商品数据库错误: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "DatabaseError",
-                "message": "删除商品失败，请稍后重试",
-                "details": {"error_type": type(e).__name__}
-            }
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="删除商品失败")
