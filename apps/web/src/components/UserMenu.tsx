@@ -9,7 +9,8 @@ import {
   Heart, 
   Eye,
   Settings,
-  PlusCircle
+  PlusCircle,
+  Shield
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import '../styles/design-system.css';
@@ -136,6 +137,16 @@ export default function UserMenu() {
                   <Package className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 </div>
                 <span>我的发布</span>
+              </a>
+              
+              <a 
+                href="/admin/moderation" 
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              >
+                <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                  <Shield className="w-4 h-4 text-purple-600" />
+                </div>
+                <span>内容审核</span>
               </a>
               
               <a 
