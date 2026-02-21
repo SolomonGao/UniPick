@@ -81,7 +81,13 @@ export default function SellItemForm() {
   const loadItemData = async (id: number) => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_ENDPOINTS.items}/${id}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      
+      const response = await fetch(`${API_ENDPOINTS.items}/${id}`, { headers });
       if (!response.ok) throw new Error('加载商品数据失败');
       const item = await response.json();
       
