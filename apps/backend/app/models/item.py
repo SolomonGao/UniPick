@@ -33,6 +33,10 @@ class Item(Base):
     # 价格历史（降价时保存原价）
     original_price = Column(Float, nullable=True)
     
+    # 内容审核状态
+    moderation_status = Column(String, default='pending', server_default=text("'pending'"))
+    moderation_log_id = Column(Integer, nullable=True)
+    
     # 创建时间
     created_at = Column(DateTime, default=datetime.utcnow, server_default=text('NOW()'))
     

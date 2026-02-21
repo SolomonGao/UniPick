@@ -245,6 +245,14 @@ async def list_items(
         if category:
             query = query.where(Item.category == category)
         
+        # 🔴 关键修复：只显示审核通过的商品，但用户自己可以看到自己的待审核商品
+        if user_id and str(user_id) == str(current_user_id):
+            # 查看自己的商品：可以看到所有状态
+            pass
+        else:
+            # 查看别人的商品或浏览列表：只显示已审核通过
+            query = query.where(Item.moderation_status == 'approved')
+        
         # 地理位置筛选 (PostGIS)
         if lat is not None and lng is not None and radius is not None:
             point = func.ST_GeogFromText(f"POINT({lng} {lat})")
@@ -366,6 +374,11 @@ async def get_item(
         
         if not item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="商品不存在")
+        
+        # 🔴 关键修复：审核未通过的商品，非所有者无法查看
+        is_owner = str(item.user_id) == str(current_user_id) if current_user_id else False
+        if item.moderation_status != 'approved' and not is_owner:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="商品不存在或审核中")
         
         # 修复1：同上，严格处理位置保密，对经纬度进行数学打码
         location_fuzzy = None

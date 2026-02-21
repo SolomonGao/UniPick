@@ -197,8 +197,12 @@ class ModerationService:
         """更新内容表的审核状态"""
         if content_type == 'item':
             table = 'items'
+            # item id 是整数
+            id_value = int(content_id)
         elif content_type == 'profile':
             table = 'profiles'
+            # profile id 是 UUID 字符串
+            id_value = content_id
         else:
             return
         
@@ -210,7 +214,7 @@ class ModerationService:
                     updated_at = NOW()
                 WHERE id = :content_id
             """),
-            {'status': status, 'log_id': log_id, 'content_id': content_id}
+            {'status': status, 'log_id': log_id, 'content_id': id_value}
         )
         await db.commit()
     
