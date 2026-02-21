@@ -42,6 +42,17 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState<'overview' | 'favorites' | 'history'>('overview');
   const [loading, setLoading] = useState(true);
 
+  // 读取 URL 参数切换标签
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab === 'favorites') {
+      setActiveTab('favorites');
+    } else if (tab === 'history') {
+      setActiveTab('history');
+    }
+  }, []);
+
   useEffect(() => {
     if (user) {
       setProfile({
