@@ -12,7 +12,8 @@ import {
   Flag,
   ChevronLeft,
   ChevronRight,
-  Share2
+  Share2,
+  Phone
 } from 'lucide-react';
 import { API_ENDPOINTS } from '../lib/constants';
 import { supabase } from '../lib/supabase';
@@ -34,6 +35,18 @@ interface Item {
   is_location_private?: boolean;
   location_fuzzy?: string | null;
   category?: string;
+}
+
+interface SellerProfile {
+  id: string;
+  username?: string;
+  full_name?: string;
+  avatar_url?: string;
+  bio?: string;
+  university?: string;
+  campus?: string;
+  phone?: string;
+  show_phone: boolean;
 }
 
 interface ItemStats {
@@ -61,6 +74,7 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
   const [fromPage, setFromPage] = useState<string>("/");
   const [stats, setStats] = useState<ItemStats>({ view_count: 0, favorite_count: 0, is_favorited: false });
   const [isImageLoading, setIsImageLoading] = useState(true);
+  const [sellerProfile, setSellerProfile] = useState<SellerProfile | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -71,6 +85,35 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
     const from = urlParams.get('from');
     if (from === 'my-listings') {
       setFromPage('/my-listings');
+    }
+  }, []);
+
+  // 获取卖家信息
+  const fetchSellerProfile = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url, bio, university, campus, phone, show_phone')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        setSellerProfile({
+          id: data.id,
+          username: data.username,
+          full_name: data.full_name,
+          avatar_url: data.avatar_url,
+          bio: data.bio,
+          university: data.university,
+          campus: data.campus,
+          phone: data.phone,
+          show_phone: data.show_phone || false,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch seller profile:', err);
     }
   }, []);
 
@@ -163,6 +206,13 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
       return response.json();
     },
   });
+
+  // 获取商品后，获取卖家信息
+  useEffect(() => {
+    if (item?.user_id) {
+      fetchSellerProfile(item.user_id);
+    }
+  }, [item, fetchSellerProfile]);
 
   if (isLoading) {
     return (
@@ -423,15 +473,49 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
             <>
               {/* 卖家信息 */}
               <div className="bg-gray-50 dark:bg-gray-700/30 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center text-gray-700 dark:text-gray-200 text-xl font-bold">
-                    {item.user_id.slice(0, 1).toUpperCase()}
+                <div className="flex items-start gap-4">
+                  {/* 卖家头像 */}
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {sellerProfile?.avatar_url ? (
+                      <img 
+                        src={sellerProfile.avatar_url} 
+                        alt="seller avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xl font-bold text-gray-700 dark:text-gray-200">
+                        {item.user_id.slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
                   </div>
+                  
                   <div className="flex-1">
-                    <p className="font-semibold text-gray-900 dark:text-white">卖家</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                      {item.user_id.slice(0, 6)}...{item.user_id.slice(-4)}
+                    {/* 卖家名称 */}
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {sellerProfile?.full_name || sellerProfile?.username || '卖家'}
                     </p>
+                    
+                    {/* 学校和校区 */}
+                    {(sellerProfile?.university || sellerProfile?.campus) && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                        {sellerProfile.university} {sellerProfile.campus && `· ${sellerProfile.campus}`}
+                      </p>
+                    )}
+                    
+                    {/* 卖家简介 */}
+                    {sellerProfile?.bio && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">
+                        {sellerProfile.bio}
+                      </p>
+                    )}
+                    
+                    {/* 联系电话（如果卖家选择公开） */}
+                    {sellerProfile?.show_phone && sellerProfile?.phone && (
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mt-2 flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5" />
+                        {sellerProfile.phone}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

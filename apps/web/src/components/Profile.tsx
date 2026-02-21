@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { User, Package, Heart, Eye, Mail, Calendar, MapPin, Loader2, Settings, LogOut } from 'lucide-react';
+import { User, Package, Heart, Eye, Mail, Calendar, MapPin, Loader2, Settings, LogOut, Building, Phone } from 'lucide-react';
 import { useAuth } from '../components/AuthGuard';
 import { useUserFavorites, useUserViewHistory } from '../hooks/useItemStats';
 import { supabase } from '../lib/supabase';
@@ -170,13 +170,47 @@ export default function Profile() {
             
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                {profile?.full_name || '用户'}
+                {profile?.full_name || profile?.username || '用户'}
               </h1>
+              
+              {/* 简介 */}
+              {profile?.bio && (
+                <p className="text-gray-600 dark:text-gray-300 mb-2 max-w-md">
+                  {profile.bio}
+                </p>
+              )}
+              
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                 <span className="flex items-center gap-1.5">
                   <Mail className="w-4 h-4" />
                   {profile?.email}
                 </span>
+                
+                {/* 学校 */}
+                {profile?.university && (
+                  <span className="flex items-center gap-1.5">
+                    <Building className="w-4 h-4" />
+                    {profile.university}
+                  </span>
+                )}
+                
+                {/* 校区 */}
+                {profile?.campus && (
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4" />
+                    {profile.campus}
+                  </span>
+                )}
+                
+                {/* 电话（仅自己可见） */}
+                {profile?.phone && (
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="w-4 h-4" />
+                    {profile.phone}
+                    <span className="text-xs text-gray-400">(仅自己可见)</span>
+                  </span>
+                )}
+                
                 <span className="flex items-center gap-1.5">
                   <Calendar className="w-4 h-4" />
                   注册于 {new Date(profile?.created_at || '').toLocaleDateString('zh-CN', { 
