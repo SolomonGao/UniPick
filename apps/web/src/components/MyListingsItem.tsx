@@ -56,7 +56,7 @@ export default function MyListingsItem() {
     
     const response = await fetch(`${API_ENDPOINTS.items}/?${params}`, { headers });
     if (!response.ok) {
-      throw new Error('Failed to fetch items');
+      throw new Error('获取商品失败');
     }
     return response.json();
   };

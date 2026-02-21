@@ -131,7 +131,7 @@ export default function Profile() {
         setMyItems(data);
       }
     } catch (error) {
-      console.error('Failed to fetch my items:', error);
+      console.error('获取我的商品失败:', error);
     } finally {
       setLoading(false);
     }

@@ -92,7 +92,7 @@ const ItemCard = memo(({
           {/* 分类和价格 */}
           <div className="flex items-center justify-between">
             <span className="label">
-              {item.category || 'Item'}
+              {item.category || '商品'}
             </span>
             <div className="flex items-center gap-2">
               {/* 如果有原价且降价了，显示划掉的原价 */}
@@ -115,7 +115,7 @@ const ItemCard = memo(({
           {/* 位置 */}
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <MapPin className="w-4 h-4" />
-            <span>{item.location_fuzzy || item.location_name || 'VT Campus'}</span>
+            <span>{item.location_fuzzy || item.location_name || 'VT 校园'}</span>
             {item.distance_display && (
               <span className="text-orange-500">• {item.distance_display}</span>
             )}
@@ -157,7 +157,7 @@ const FeaturedCard = memo(({ item }: { item: Item }) => {
         {/* 左上角标签 */}
         <div className="absolute top-6 left-6">
           <span className="tag-accent">
-            Featured
+            精选
           </span>
         </div>
 
@@ -173,12 +173,12 @@ const FeaturedCard = memo(({ item }: { item: Item }) => {
           <div className="flex items-end justify-between">
             <div className="space-y-2">
               <span className="text-sm text-white/70 uppercase tracking-wider">
-                {item.category || 'Item'}
+                {item.category || '商品'}
               </span>
               <h2 className="text-3xl font-semibold">{item.title}</h2>
               <div className="flex items-center gap-2 text-white/70">
                 <MapPin className="w-4 h-4" />
-                {item.location_fuzzy || item.location_name || 'VT Campus'}
+                {item.location_fuzzy || item.location_name || 'VT 校园'}
               </div>
             </div>
 
@@ -198,8 +198,8 @@ const EmptyState = memo(() => (
     <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-8">
       <span className="text-4xl text-gray-300">∅</span>
     </div>
-    <h3 className="text-xl font-medium mb-2">No items found</h3>
-    <p className="text-gray-500">Try adjusting your search criteria</p>
+    <h3 className="text-xl font-medium mb-2">未找到商品</h3>
+    <p className="text-gray-500">尝试调整搜索条件</p>
   </div>
 ));
 
@@ -302,7 +302,7 @@ export default function SearchableFeed() {
       }
 
       const response = await fetch(`${API_ENDPOINTS.items}/?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch items');
+      if (!response.ok) throw new Error('获取商品失败');
       return response.json();
     },
     initialPageParam: 0,
@@ -339,9 +339,9 @@ export default function SearchableFeed() {
   if (status === 'error') {
     return (
       <div className="flex flex-col items-center justify-center py-32">
-        <p className="text-gray-500 mb-4">Failed to load: {(error as Error).message}</p>
+        <p className="text-gray-500 mb-4">加载失败: {(error as Error).message}</p>
         <button onClick={() => window.location.reload()} className="btn btn-primary btn-md">
-          Retry
+          重试
         </button>
       </div>
     );
@@ -352,13 +352,13 @@ export default function SearchableFeed() {
       {/* 标题区域 - 高级公寓感 */}
       <div className="mb-16 text-center">
         <div className="section-label justify-center mb-6">
-          <span className="label">Marketplace</span>
+          <span className="label">市场</span>
         </div>
         <h1 className="heading-xl text-gray-900 dark:text-white mb-4">
-          Discover Items
+          发现好物
         </h1>
         <p className="text-xl text-gray-500 max-w-2xl mx-auto">
-          Find unique items from your campus community
+          从校园社区发现独特的二手好物
         </p>
         <div className="accent-line mx-auto mt-8" />
       </div>
@@ -383,7 +383,7 @@ export default function SearchableFeed() {
             <div className="mb-20">
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-sm font-semibold tracking-wider uppercase text-gray-400">
-                  Featured
+                  精选
                 </h2>
                 <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800 ml-6" />
               </div>
@@ -400,7 +400,7 @@ export default function SearchableFeed() {
           <div className="flex items-center gap-4 mb-12">
             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
             <span className="text-sm font-semibold tracking-wider uppercase text-gray-400">
-              All Items
+              全部商品
             </span>
             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
           </div>
@@ -417,11 +417,11 @@ export default function SearchableFeed() {
             {isFetchingNextPage ? (
               <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
             ) : hasNextPage ? (
-              <span className="text-sm text-gray-400 tracking-wider">Scroll for more</span>
+              <span className="text-sm text-gray-400 tracking-wider">向下滚动加载更多</span>
             ) : (
               <div className="flex items-center gap-4">
                 <div className="w-16 h-px bg-gray-300" />
-                <span className="text-sm text-gray-400 tracking-wider">End</span>
+                <span className="text-sm text-gray-400 tracking-wider">到底了</span>
                 <div className="w-16 h-px bg-gray-300" />
               </div>
             )}

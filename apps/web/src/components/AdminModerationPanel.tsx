@@ -94,7 +94,7 @@ export default function AdminModerationPanel() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast.error('Please login');
+        toast.error('请先登录');
         return;
       }
 
@@ -115,9 +115,9 @@ export default function AdminModerationPanel() {
         }));
         setItems(parsed);
       } else if (response.status === 403) {
-        toast.error('No permission to access moderation panel');
+        toast.error('无权限访问审核面板');
       } else {
-        toast.error('Failed to fetch data');
+        toast.error('获取数据失败');
       }
 
       // Fetch stats
@@ -132,8 +132,8 @@ export default function AdminModerationPanel() {
         setStats(await statsRes.json());
       }
     } catch (error) {
-      console.error('Failed to fetch moderation data:', error);
-      toast.error('Failed to fetch data');
+      console.error('获取审核数据失败:', error);
+      toast.error('获取数据失败');
     } finally {
       setLoading(false);
     }
@@ -161,16 +161,16 @@ export default function AdminModerationPanel() {
       );
 
       if (response.ok) {
-        toast.success(decision === 'approved' ? 'Approved' : 'Rejected');
+        toast.success(decision === 'approved' ? '已通过' : '已拒绝');
         setReviewNote('');
         setExpandedItem(null);
         fetchData();
       } else {
-        toast.error('Review operation failed');
+        toast.error('审核操作失败');
       }
     } catch (error) {
-      console.error('Review failed:', error);
-      toast.error('Review failed');
+      console.error('审核失败:', error);
+      toast.error('审核失败');
     }
   };
 
@@ -228,8 +228,8 @@ export default function AdminModerationPanel() {
             <Shield className="w-6 h-6 text-white dark:text-gray-900" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Content Moderation</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">Review user-generated content to ensure platform safety</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">内容审核</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">审核用户发布的内容，确保平台安全</p>
           </div>
         </div>
         
@@ -239,7 +239,7 @@ export default function AdminModerationPanel() {
           className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          刷新
         </button>
       </div>
 
@@ -247,11 +247,11 @@ export default function AdminModerationPanel() {
       {stats && (
         <div className="grid grid-cols-5 gap-4 mb-8">
           {[
-            { label: 'Total', value: stats.total, icon: FileText, color: 'bg-gray-100 dark:bg-gray-700' },
-            { label: 'Pending', value: stats.pending, icon: Clock, color: 'bg-yellow-100 dark:bg-yellow-900/30' },
-            { label: 'Flagged', value: stats.flagged, icon: AlertTriangle, color: 'bg-orange-100 dark:bg-orange-900/30' },
-            { label: 'Approved', value: stats.approved, icon: CheckCircle, color: 'bg-green-100 dark:bg-green-900/30' },
-            { label: 'Rejected', value: stats.rejected, icon: XCircle, color: 'bg-red-100 dark:bg-red-900/30' },
+            { label: '总计', value: stats.total, icon: FileText, color: 'bg-gray-100 dark:bg-gray-700' },
+            { label: '待审核', value: stats.pending, icon: Clock, color: 'bg-yellow-100 dark:bg-yellow-900/30' },
+            { label: '可疑', value: stats.flagged, icon: AlertTriangle, color: 'bg-orange-100 dark:bg-orange-900/30' },
+            { label: '已通过', value: stats.approved, icon: CheckCircle, color: 'bg-green-100 dark:bg-green-900/30' },
+            { label: '已拒绝', value: stats.rejected, icon: XCircle, color: 'bg-red-100 dark:bg-red-900/30' },
           ].map((stat) => (
             <div key={stat.label} className={`${stat.color} rounded-2xl p-4`}>
               <div className="flex items-center gap-2 mb-2">
@@ -271,10 +271,10 @@ export default function AdminModerationPanel() {
           <div className="flex items-center gap-2 overflow-x-auto">
             <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
             {[
-              { id: 'flagged', label: 'Flagged', icon: AlertTriangle },
-              { id: 'pending', label: 'Pending', icon: Clock },
-              { id: 'rejected', label: 'Rejected', icon: XCircle },
-              { id: 'approved', label: 'Approved', icon: CheckCircle },
+              { id: 'flagged', label: '可疑', icon: AlertTriangle },
+              { id: 'pending', label: '待审核', icon: Clock },
+              { id: 'rejected', label: '已拒绝', icon: XCircle },
+              { id: 'approved', label: '已通过', icon: CheckCircle },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -296,7 +296,7 @@ export default function AdminModerationPanel() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search content, email or ID..."
+              placeholder="搜索内容、邮箱或ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-gray-900"
@@ -313,7 +313,7 @@ export default function AdminModerationPanel() {
       ) : filteredItems.length === 0 ? (
         <div className="text-center py-16 bg-gray-50 dark:bg-gray-700/30 rounded-2xl">
           <CheckCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">No items to review</p>
+          <p className="text-gray-500 dark:text-gray-400">没有待审核的项目</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -334,13 +334,13 @@ export default function AdminModerationPanel() {
                       {item.flagged && (
                         <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 rounded-lg text-xs text-red-700 dark:text-red-400">
                           <AlertOctagon className="w-3 h-3" />
-                          Auto-flagged
+                          自动标记
                         </span>
                       )}
                     </div>
                     
                     <p className="text-gray-900 dark:text-white font-medium mb-2 line-clamp-2">
-                      {item.content_text || '<No content>'}
+                      {item.content_text || '<无内容>'}
                     </p>
                     
                     <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
@@ -370,7 +370,7 @@ export default function AdminModerationPanel() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                      title="View original content"
+                      title="查看原始内容"
                     >
                       <ExternalLink className="w-4 h-4" />
                     </a>
@@ -392,7 +392,7 @@ export default function AdminModerationPanel() {
                     <div className="mb-4">
                       <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                         <BarChart3 className="w-4 h-4" />
-                        Risk Assessment Details
+                        风险评估详情
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(item.scores)
@@ -409,7 +409,7 @@ export default function AdminModerationPanel() {
                       <textarea
                         value={reviewNote}
                         onChange={(e) => setReviewNote(e.target.value)}
-                        placeholder="Add review note (optional)..."
+                        placeholder="添加审核备注（可选）..."
                         className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl dark:text-white resize-none"
                         rows={2}
                       />
@@ -419,14 +419,14 @@ export default function AdminModerationPanel() {
                           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-colors"
                         >
                           <CheckCircle className="w-5 h-5" />
-                          Approve
+                          通过
                         </button>
                         <button
                           onClick={() => handleReview(item.id, 'rejected')}
                           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors"
                         >
                           <XCircle className="w-5 h-5" />
-                          Reject
+                          拒绝
                         </button>
                       </div>
                     </div>
@@ -435,8 +435,8 @@ export default function AdminModerationPanel() {
                   {/* Reviewed Info */}
                   {(item.status === 'approved' || item.status === 'rejected') && item.reviewed_at && (
                     <div className="text-sm text-gray-500 dark:text-gray-400">
-                      <p>Reviewed at {new Date(item.reviewed_at).toLocaleString('zh-CN')}</p>
-                      {item.review_note && <p className="mt-1">Note: {item.review_note}</p>}
+                      <p>审核于 {new Date(item.reviewed_at).toLocaleString('zh-CN')}</p>
+                      {item.review_note && <p className="mt-1">备注: {item.review_note}</p>}
                     </div>
                   )}
                 </div>

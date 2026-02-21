@@ -8,7 +8,7 @@ export const prerender = false;
 const { id } = Astro.params;
 ---
 
-<Layout title="Item Details - UniPick">
+<Layout title="商品详情 - UniPick">
   <div class="max-w-4xl mx-auto px-4 py-8">
     <ItemDetail itemId={id} client:only="react" />
   </div>

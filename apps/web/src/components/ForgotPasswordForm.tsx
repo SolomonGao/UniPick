@@ -77,7 +77,7 @@ export default function ForgotPasswordForm() {
           <input
             {...register('email')}
             type="email"
-            placeholder="yourname@example.com"
+            placeholder="yourname@vt.edu"
             disabled={isLoading}
             className={`w-full h-12 px-4 bg-white dark:bg-gray-800 border-2 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 transition-all focus:outline-none ${
               errors.email 

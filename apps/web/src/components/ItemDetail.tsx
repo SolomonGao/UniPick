@@ -114,7 +114,7 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
         });
       }
     } catch (err) {
-      console.error('Failed to fetch seller profile:', err);
+      console.error('获取卖家资料失败:', err);
     }
   }, []);
 
@@ -135,7 +135,7 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
         detail: { itemId, timestamp: Date.now() } 
       }));
     } catch (err) {
-      console.error('Failed to record view:', err);
+      console.error('记录浏览失败:', err);
     }
   }, [itemId]);
 
@@ -153,7 +153,7 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
         setStats(data);
       }
     } catch (err) {
-      console.error('Failed to fetch stats:', err);
+      console.error('获取统计数据失败:', err);
     }
   }, [itemId]);
 
@@ -188,7 +188,7 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
         }));
       }
     } catch (err) {
-      console.error('Failed to toggle favorite:', err);
+      console.error('切换收藏失败:', err);
     }
   };
 
@@ -211,7 +211,7 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
         if (response.status === 404) {
           throw new Error('商品不存在或审核中');
         }
-        throw new Error('Failed to fetch item');
+        throw new Error('获取商品失败');
       }
       return response.json();
     },
