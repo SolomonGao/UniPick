@@ -1,11 +1,12 @@
 import os
 from pydantic_settings import BaseSettings
+from typing import Optional
 
 class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_KEY: str
-
     DATABASE_URL: str
+    OPENAI_API_KEY: Optional[str] = None  # 可选，用于内容审核
 
     class Config:
             # 告诉 Pydantic 去哪里找文件

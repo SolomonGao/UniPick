@@ -9,7 +9,7 @@ import UserSettingsModal from './UserSettingsModal';
 interface UserProfile {
   id: string;
   email: string;
-  created_at: string;
+  created_at?: string;
   username?: string;
   full_name?: string;
   avatar_url?: string;
@@ -18,8 +18,8 @@ interface UserProfile {
   campus?: string;
   university?: string;
   location?: string;
-  notification_email: boolean;
-  show_phone: boolean;
+  notification_email?: boolean;
+  show_phone?: boolean;
 }
 
 interface Item {
@@ -88,15 +88,15 @@ export default function Profile() {
         id: user.id,
         email: user.email || '',
         created_at: user.created_at || new Date().toISOString(),
-        username: data?.username || '',
-        full_name: data?.full_name || '',
-        avatar_url: data?.avatar_url || '',
-        bio: data?.bio || '',
-        phone: data?.phone || '',
-        campus: data?.campus || '',
-        university: data?.university || '',
-        notification_email: data?.notification_email ?? true,
-        show_phone: data?.show_phone ?? false,
+        username: (data as any)?.username || '',
+        full_name: (data as any)?.full_name || '',
+        avatar_url: (data as any)?.avatar_url || '',
+        bio: (data as any)?.bio || '',
+        phone: (data as any)?.phone || '',
+        campus: (data as any)?.campus || '',
+        university: (data as any)?.university || '',
+        notification_email: (data as any)?.notification_email ?? true,
+        show_phone: (data as any)?.show_phone ?? false,
       });
     } catch (error) {
       console.error('加载用户资料失败:', error);

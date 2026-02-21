@@ -13,6 +13,7 @@ from app.models.item import Item, Favorite
 from app.schemas.item import ItemCreate, ItemResponse
 from app.schemas.errors import ErrorResponse, ValidationErrorResponse, NotFoundErrorResponse
 from app.core.security import get_current_user_id, get_current_user_id_optional
+from app.api.v1.moderation import moderate_item
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -121,6 +122,20 @@ async def create_item(
         db.add(new_item)
         await db.commit()
         await db.refresh(new_item)
+        
+        # 异步内容审核
+        try:
+            moderation_result = await moderate_item(
+                db=db,
+                item_id=str(new_item.id),
+                user_id=str(user_id),
+                title=item_in.title,
+                description=item_in.description or ""
+            )
+            logger.info(f"商品 {new_item.id} 审核完成: {moderation_result.status}")
+        except Exception as e:
+            logger.error(f"商品 {new_item.id} 审核失败: {e}")
+            # 审核失败不影响商品创建
         
         logger.info(f"用户 {user_id} 创建了商品: {new_item.id}")
         return new_item

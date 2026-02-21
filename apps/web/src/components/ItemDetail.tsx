@@ -93,7 +93,7 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, bio, university, campus, phone, show_phone')
+        .select('*')
         .eq('id', userId)
         .single();
       
@@ -102,14 +102,14 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
       if (data) {
         setSellerProfile({
           id: data.id,
-          username: data.username,
-          full_name: data.full_name,
-          avatar_url: data.avatar_url,
-          bio: data.bio,
-          university: data.university,
-          campus: data.campus,
-          phone: data.phone,
-          show_phone: data.show_phone || false,
+          username: (data as any).username,
+          full_name: (data as any).full_name,
+          avatar_url: (data as any).avatar_url,
+          bio: (data as any).bio,
+          university: (data as any).university,
+          campus: (data as any).campus,
+          phone: (data as any).phone,
+          show_phone: (data as any).show_phone || false,
         });
       }
     } catch (err) {

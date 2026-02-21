@@ -29,7 +29,7 @@ const itemSchema = z.object({
   location_name: z.string().min(2, "请选择交易地点"),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
-  is_location_private: z.boolean().default(false),
+  is_location_private: z.boolean(),
 });
 
 type ItemFormInputs = z.infer<typeof itemSchema>;
@@ -42,15 +42,7 @@ export default function SellItemForm() {
   const [itemId, setItemId] = useState<number | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    formState: { errors, isSubmitting },
-    reset,
-    setValue,
-    watch
-  } = useForm<ItemFormInputs>({
+  const form = useForm<ItemFormInputs>({
     resolver: zodResolver(itemSchema),
     defaultValues: {
       latitude: 37.2294,
@@ -59,6 +51,16 @@ export default function SellItemForm() {
       is_location_private: false
     }
   });
+
+  const {
+    register,
+    handleSubmit: formHandleSubmit,
+    control,
+    formState: { errors, isSubmitting },
+    reset,
+    setValue,
+    watch
+  } = form;
 
   const latitude = watch('latitude');
   const longitude = watch('longitude');
@@ -277,7 +279,7 @@ export default function SellItemForm() {
         )}
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={formHandleSubmit(onSubmit)} className="space-y-8">
         {/* 图片上传区 */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
           <div className="flex items-center gap-3 mb-6">

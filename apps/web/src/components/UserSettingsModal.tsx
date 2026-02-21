@@ -27,8 +27,8 @@ interface UserProfile {
   phone?: string;
   campus?: string;
   university?: string;
-  notification_email: boolean;
-  show_phone: boolean;
+  notification_email?: boolean;
+  show_phone?: boolean;
 }
 
 interface UserSettingsModalProps {
@@ -165,7 +165,7 @@ export default function UserSettingsModal({
         .from('profiles')
         .update({
           show_phone: formData.show_phone
-        })
+        } as any)
         .eq('id', profile.id);
 
       if (error) throw error;
@@ -188,7 +188,7 @@ export default function UserSettingsModal({
         .from('profiles')
         .update({
           notification_email: formData.notification_email
-        })
+        } as any)
         .eq('id', profile.id);
 
       if (error) throw error;
