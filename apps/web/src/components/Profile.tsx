@@ -91,31 +91,6 @@ export default function Profile() {
     );
   }
 
-  // 统计数据
-  const stats = [
-    { 
-      icon: Package, 
-      label: '我的发布', 
-      value: myItems.length,
-      color: 'bg-gray-100 dark:bg-gray-700',
-      iconColor: 'text-gray-600 dark:text-gray-300'
-    },
-    { 
-      icon: Heart, 
-      label: '我的收藏', 
-      value: favorites.length,
-      color: 'bg-gray-100 dark:bg-gray-700',
-      iconColor: 'text-gray-600 dark:text-gray-300'
-    },
-    { 
-      icon: Eye, 
-      label: '浏览记录', 
-      value: history.length,
-      color: 'bg-gray-100 dark:bg-gray-700',
-      iconColor: 'text-gray-600 dark:text-gray-300'
-    },
-  ];
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       {/* 用户信息卡片 */}
@@ -171,25 +146,41 @@ export default function Profile() {
 
         {/* 统计 */}
         <div className="grid grid-cols-3 gap-4 mt-8">
-          {stats.map((stat, index) => (
-            <button
-              key={stat.label}
-              onClick={() => {
-                if (index === 0) window.location.href = '/my-listings';
-                else if (index === 1) setActiveTab('favorites');
-                else if (index === 2) setActiveTab('history');
-              }}
-              className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
-            >
-              <div className={`w-12 h-12 rounded-xl ${stat.color} flex items-center justify-center flex-shrink-0`}>
-                <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{stat.label}</p>
-              </div>
-            </button>
-          ))}
+          {/* 我的发布 - 可点击跳转 */}
+          <a
+            href="/my-listings"
+            className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+              <Package className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{myItems.length}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">我的发布</p>
+            </div>
+          </a>
+          
+          {/* 我的收藏 - 仅展示 */}
+          <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/50">
+            <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+              <Heart className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{favorites.length}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">我的收藏</p>
+            </div>
+          </div>
+          
+          {/* 浏览记录 - 仅展示 */}
+          <div className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/50">
+            <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+              <Eye className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{history.length}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">浏览记录</p>
+            </div>
+          </div>
         </div>
       </div>
 
