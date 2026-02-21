@@ -35,6 +35,7 @@ interface Item {
   is_location_private?: boolean;
   location_fuzzy?: string | null;
   category?: string;
+  moderation_status?: 'pending' | 'approved' | 'flagged' | 'rejected';
 }
 
 interface SellerProfile {
@@ -199,8 +200,17 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
   const { data: item, isLoading, error } = useQuery({
     queryKey: ['item', itemId],
     queryFn: async (): Promise<Item> => {
-      const response = await fetch(`${API_ENDPOINTS.items}/${itemId}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      
+      const response = await fetch(`${API_ENDPOINTS.items}/${itemId}`, { headers });
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('商品不存在或审核中');
+        }
         throw new Error('Failed to fetch item');
       }
       return response.json();
@@ -223,13 +233,27 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
   }
 
   if (error || !item) {
+    const errorMessage = error?.message || '无法加载商品信息';
+    const isNotFound = errorMessage.includes('不存在') || errorMessage.includes('审核中');
+    
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
-        <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-          <Flag className="w-10 h-10 text-gray-400" />
+        <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 ${
+          isNotFound ? 'bg-yellow-100 dark:bg-yellow-900/20' : 'bg-gray-100 dark:bg-gray-800'
+        }`}>
+          <Flag className={`w-10 h-10 ${isNotFound ? 'text-yellow-500' : 'text-gray-400'}`} />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">加载失败</h2>
-        <p className="text-gray-500 dark:text-gray-400 mb-6">无法加载商品信息</p>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+          {isNotFound ? '商品不可用' : '加载失败'}
+        </h2>
+        <p className="text-gray-500 dark:text-gray-400 mb-2">{errorMessage}</p>
+        
+        {isNotFound && (
+          <p className="text-sm text-gray-400 dark:text-gray-500 mb-6">
+            该商品可能正在审核中或已被下架
+          </p>
+        )}
+        
         <a 
           href="/" 
           className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium rounded-xl transition-colors"
@@ -336,11 +360,27 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
         <div className="space-y-6">
           {/* 标题和分类 */}
           <div>
-            {item.category && (
-              <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-full mb-3">
-                {item.category}
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              {item.category && (
+                <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-full">
+                  {item.category}
+                </span>
+              )}
+              {/* 审核状态标签 - 仅所有者可见 */}
+              {isOwner && item.moderation_status && item.moderation_status !== 'approved' && (
+                <span className={`inline-flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-full ${
+                  item.moderation_status === 'pending'
+                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                    : item.moderation_status === 'flagged'
+                    ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                }`}>
+                  {item.moderation_status === 'pending' && '⏳ 审核中'}
+                  {item.moderation_status === 'flagged' && '⚠️ 待审核'}
+                  {item.moderation_status === 'rejected' && '❌ 已拒绝'}
+                </span>
+              )}
+            </div>
             <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-3">
               {item.title}
             </h1>

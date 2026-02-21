@@ -17,6 +17,7 @@ interface Item {
   category?: string;
   created_at: string;
   description?: string;
+  moderation_status?: 'pending' | 'approved' | 'flagged' | 'rejected';
 }
 
 const PAGE_SIZE = 12;
@@ -221,6 +222,20 @@ export default function MyListingsItem() {
                         {item.category && (
                           <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-xs">
                             {CATEGORY_LABELS[item.category] || item.category}
+                          </span>
+                        )}
+                        {/* 审核状态标签 */}
+                        {item.moderation_status && item.moderation_status !== 'approved' && (
+                          <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${
+                            item.moderation_status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              : item.moderation_status === 'flagged'
+                              ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          }`}>
+                            {item.moderation_status === 'pending' && '审核中'}
+                            {item.moderation_status === 'flagged' && '待审核'}
+                            {item.moderation_status === 'rejected' && '已拒绝'}
                           </span>
                         )}
                         <span className="flex items-center gap-1">

@@ -406,7 +406,8 @@ async def get_item(
             "view_count": item.view_count or 0,
             "favorite_count": 0,
             "is_location_private": item.is_location_private,
-            "location_fuzzy": location_fuzzy
+            "location_fuzzy": location_fuzzy,
+            "moderation_status": item.moderation_status
         }
         
         return item_dict
