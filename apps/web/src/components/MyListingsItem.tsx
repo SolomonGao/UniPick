@@ -47,7 +47,14 @@ export default function MyListingsItem() {
       user_id: currentUserId,
     });
     
-    const response = await fetch(`${API_ENDPOINTS.items}/?${params}`);
+    // 🔴 关键修复：添加认证头，后端才能识别是当前用户
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {};
+    if (session) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+    
+    const response = await fetch(`${API_ENDPOINTS.items}/?${params}`, { headers });
     if (!response.ok) {
       throw new Error('Failed to fetch items');
     }

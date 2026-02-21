@@ -31,6 +31,7 @@ interface Item {
   category?: string;
   view_count?: number;
   created_at: string;
+  moderation_status?: 'pending' | 'approved' | 'flagged' | 'rejected';
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -322,22 +323,50 @@ export default function Profile() {
                 </div>
               ) : myItems.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {myItems.map((item) => (
+                  {myItems.map((item) => {
+                    const isPending = item.moderation_status && item.moderation_status !== 'approved';
+                    const statusText = 
+                      item.moderation_status === 'pending' ? '审核中' :
+                      item.moderation_status === 'flagged' ? '待审核' :
+                      item.moderation_status === 'rejected' ? '已拒绝' : '';
+                    
+                    return (
                     <a
                       key={item.id}
                       href={`/items/${item.id}`}
                       className="group border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-lg hover:border-gray-200 dark:hover:border-gray-600 transition-all bg-white dark:bg-gray-800"
                     >
-                      <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                      <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-700 overflow-hidden relative">
                         {item.images?.[0] ? (
                           <img 
                             src={item.images[0]} 
                             alt={item.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+                              isPending ? 'blur-md' : ''
+                            }`}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
                             <Package className="w-8 h-8" />
+                          </div>
+                        )}
+                        {/* 审核状态遮罩 - 图片中间显示 */}
+                        {isPending && (
+                          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center">
+                            <div className="text-center">
+                              <div className={`px-4 py-2 rounded-xl font-bold text-lg ${
+                                item.moderation_status === 'pending'
+                                  ? 'bg-yellow-500 text-white'
+                                  : item.moderation_status === 'flagged'
+                                  ? 'bg-orange-500 text-white'
+                                  : 'bg-red-500 text-white'
+                              }`}>
+                                {statusText}
+                              </div>
+                              <p className="text-white text-xs mt-2 drop-shadow-md">
+                                仅自己可见
+                              </p>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -354,7 +383,7 @@ export default function Profile() {
                         </div>
                       </div>
                     </a>
-                  ))}
+                  );})}
                 </div>
               ) : (
                 <div className="text-center py-16 bg-gray-50 dark:bg-gray-700/30 rounded-xl">

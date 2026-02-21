@@ -336,7 +336,8 @@ async def list_items(
                 "view_count": item.view_count or 0,
                 "favorite_count": fav_counts.get(item.id, 0),
                 "is_location_private": item.is_location_private,
-                "location_fuzzy": location_fuzzy
+                "location_fuzzy": location_fuzzy,
+                "moderation_status": item.moderation_status
             }
             
             if lat is not None and lng is not None:
