@@ -4,14 +4,22 @@ import { useAuth } from '../components/AuthGuard';
 import { useUserFavorites, useUserViewHistory } from '../hooks/useItemStats';
 import { supabase } from '../lib/supabase';
 import { API_ENDPOINTS } from '../lib/constants';
+import UserSettingsModal from './UserSettingsModal';
 
 interface UserProfile {
   id: string;
   email: string;
   created_at: string;
+  username?: string;
   full_name?: string;
   avatar_url?: string;
+  bio?: string;
+  phone?: string;
+  campus?: string;
+  university?: string;
   location?: string;
+  notification_email: boolean;
+  show_phone: boolean;
 }
 
 interface Item {
@@ -42,6 +50,7 @@ export default function Profile() {
   const [myItems, setMyItems] = useState<Item[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'favorites' | 'history'>('overview');
   const [loading, setLoading] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // 读取 URL 参数切换标签
   useEffect(() => {
@@ -54,16 +63,53 @@ export default function Profile() {
     }
   }, []);
 
+  // 加载用户资料
   useEffect(() => {
     if (user) {
+      loadUserProfile();
+      fetchMyItems();
+    }
+  }, [user]);
+
+  const loadUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      // 从 Supabase 获取完整资料
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      
       setProfile({
         id: user.id,
         email: user.email || '',
         created_at: user.created_at || new Date().toISOString(),
+        username: data?.username || '',
+        full_name: data?.full_name || '',
+        avatar_url: data?.avatar_url || '',
+        bio: data?.bio || '',
+        phone: data?.phone || '',
+        campus: data?.campus || '',
+        university: data?.university || '',
+        notification_email: data?.notification_email ?? true,
+        show_phone: data?.show_phone ?? false,
       });
-      fetchMyItems();
+    } catch (error) {
+      console.error('加载用户资料失败:', error);
+      // 使用基础资料
+      setProfile({
+        id: user.id,
+        email: user.email || '',
+        created_at: user.created_at || new Date().toISOString(),
+        notification_email: true,
+        show_phone: false,
+      });
     }
-  }, [user]);
+  };
 
   const fetchMyItems = async () => {
     try {
@@ -144,7 +190,10 @@ export default function Profile() {
 
           {/* 操作按钮 */}
           <div className="flex items-center gap-2">
-            <button className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center transition-colors">
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center justify-center transition-colors"
+            >
               <Settings className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
             <button 
@@ -410,6 +459,20 @@ export default function Profile() {
           )}
         </div>
       </div>
+
+      {/* 设置弹窗 */}
+      {profile && (
+        <UserSettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          profile={profile}
+          onProfileUpdate={(updatedProfile) => {
+            setProfile(updatedProfile);
+            // 刷新页面以显示更新后的资料
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }
