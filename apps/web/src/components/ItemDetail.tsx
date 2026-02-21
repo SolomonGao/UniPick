@@ -21,6 +21,7 @@ interface Item {
   id: number;
   title: string;
   price: number;
+  original_price?: number | null;
   description: string | null;
   images: string[] | null;
   location_name: string | null;
@@ -309,14 +310,22 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
           {/* 价格 */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">价格</p>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">$</span>
-              <span className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white">
-                {Math.floor(item.price)}
-              </span>
-              <span className="text-xl text-gray-500 dark:text-gray-400">
-                .{(item.price % 1).toFixed(2).slice(2)}
-              </span>
+            <div className="flex items-baseline gap-3">
+              {/* 如果有原价且降价了，显示划掉的原价 */}
+              {item.original_price && item.original_price > item.price && (
+                <span className="text-2xl text-gray-400 dark:text-gray-500 line-through decoration-gray-400">
+                  ${item.original_price.toFixed(0)}
+                </span>
+              )}
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-gray-900 dark:text-white">$</span>
+                <span className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white">
+                  {Math.floor(item.price)}
+                </span>
+                <span className="text-xl text-gray-500 dark:text-gray-400">
+                  .{(item.price % 1).toFixed(2).slice(2)}
+                </span>
+              </div>
             </div>
           </div>
 

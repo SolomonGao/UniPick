@@ -11,6 +11,7 @@ interface Item {
   id: number;
   title: string;
   price: number;
+  original_price?: number | null;
   images: string[];
   location_name: string;
   category?: string;
@@ -205,10 +206,18 @@ export default function MyListingsItem() {
                     <div>
                       <h3 className="font-semibold text-gray-900 dark:text-white truncate">{item.title}</h3>
                       <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-500 dark:text-gray-400">
-                        <span className="flex items-center gap-1 text-lg font-bold text-gray-900 dark:text-white">
+                        <div className="flex items-center gap-2">
                           <DollarSign className="w-4 h-4" />
-                          {item.price}
-                        </span>
+                          {/* 如果有原价且降价了，显示划掉的原价 */}
+                          {item.original_price && item.original_price > item.price && (
+                            <span className="text-sm text-gray-400 line-through decoration-gray-400">
+                              ${item.original_price}
+                            </span>
+                          )}
+                          <span className="text-lg font-bold text-gray-900 dark:text-white">
+                            ${item.price}
+                          </span>
+                        </div>
                         {item.category && (
                           <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-xs">
                             {CATEGORY_LABELS[item.category] || item.category}

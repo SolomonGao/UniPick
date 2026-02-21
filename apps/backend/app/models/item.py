@@ -30,6 +30,9 @@ class Item(Base):
     # 浏览量统计
     view_count = Column(Integer, default=0, server_default=text('0'))
     
+    # 价格历史（降价时保存原价）
+    original_price = Column(Float, nullable=True)
+    
     # 创建时间
     created_at = Column(DateTime, default=datetime.utcnow, server_default=text('NOW()'))
     

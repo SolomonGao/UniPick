@@ -18,6 +18,7 @@ interface Item {
   id: number;
   title: string;
   price: number;
+  original_price?: number | null;
   images: string[];
   category?: string;
   view_count?: number;
@@ -259,7 +260,15 @@ export default function Profile() {
                       </div>
                       <div className="p-4">
                         <h4 className="font-medium text-gray-900 dark:text-white truncate mb-1">{item.title}</h4>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">${item.price}</p>
+                        <div className="flex items-center gap-2">
+                          {/* 如果有原价且降价了，显示划掉的原价 */}
+                          {item.original_price && item.original_price > item.price && (
+                            <span className="text-sm text-gray-400 line-through decoration-gray-400">
+                              ${item.original_price}
+                            </span>
+                          )}
+                          <p className="text-lg font-bold text-gray-900 dark:text-white">${item.price}</p>
+                        </div>
                       </div>
                     </a>
                   ))}
@@ -311,7 +320,15 @@ export default function Profile() {
                       </div>
                       <div className="p-4">
                         <h4 className="font-medium text-gray-900 dark:text-white truncate mb-1">{item.title}</h4>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">${item.price}</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          {/* 如果有原价且降价了，显示划掉的原价 */}
+                          {item.original_price && item.original_price > item.price && (
+                            <span className="text-sm text-gray-400 line-through decoration-gray-400">
+                              ${item.original_price}
+                            </span>
+                          )}
+                          <p className="text-lg font-bold text-gray-900 dark:text-white">${item.price}</p>
+                        </div>
                         {item.category && (
                           <span className="text-xs text-gray-500 dark:text-gray-400">
                             {CATEGORY_LABELS[item.category]}
@@ -362,7 +379,15 @@ export default function Profile() {
                       </div>
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900 dark:text-white mb-1">{item.title}</h4>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white mb-2">${item.price}</p>
+                        <div className="flex items-center gap-2 mb-2">
+                          {/* 如果有原价且降价了，显示划掉的原价 */}
+                          {item.original_price && item.original_price > item.price && (
+                            <span className="text-sm text-gray-400 line-through decoration-gray-400">
+                              ${item.original_price}
+                            </span>
+                          )}
+                          <p className="text-lg font-bold text-gray-900 dark:text-white">${item.price}</p>
+                        </div>
                         <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                           <span>浏览 {item.view_count || 0} 次</span>
                           {item.category && (

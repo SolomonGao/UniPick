@@ -301,6 +301,7 @@ async def list_items(
                 "id": item.id,
                 "title": item.title,
                 "price": item.price,
+                "original_price": item.original_price,
                 "description": item.description,
                 "location_name": location_name,
                 "category": item.category,
@@ -365,6 +366,7 @@ async def get_item(
             "id": item.id,
             "title": item.title,
             "price": item.price,
+            "original_price": item.original_price,
             "description": item.description,
             "location_name": item.location_name,
             "category": item.category,
@@ -400,7 +402,7 @@ async def get_item(
 )
 async def update_item(
     item_id: int = Path(..., gt=0, description="商品ID"),
-    item_update: ItemCreate = Body(...), # 修复4：使用 Body(...) 强制要求请求体，防止发送空 JSON 引发 500 崩溃
+    item_update: ItemCreate = Body(...),
     item: Item = Depends(require_item_owner),
     db: AsyncSession = Depends(get_db),
 ):
@@ -410,6 +412,10 @@ async def update_item(
         if item_update.category and item_update.category not in VALID_CATEGORIES:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的商品分类")
         
+        # 价格降价检测：如果新价格低于当前价格，保存当前价格为原价
+        if item_update.price < item.price:
+            item.original_price = item.price
+        
         # 更新字段
         item.title = item_update.title
         item.price = item_update.price
@@ -417,8 +423,6 @@ async def update_item(
         item.category = item_update.category
         item.location_name = item_update.location_name
         item.images = item_update.images
-        
-        # 修复3：补充遗漏的隐私开关状态更新
         item.is_location_private = item_update.is_location_private
         
         # 更新地理位置
