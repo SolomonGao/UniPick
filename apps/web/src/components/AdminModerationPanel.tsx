@@ -100,7 +100,7 @@ export default function AdminModerationPanel() {
 
       // Fetch review queue
       const response = await fetch(
-        `${API_ENDPOINTS.base}/moderation/admin/review-queue?status=${statusFilter}&limit=50`,
+        `${API_ENDPOINTS.moderation}/admin/review-queue?status=${statusFilter}&limit=50`,
         {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         }
@@ -122,7 +122,7 @@ export default function AdminModerationPanel() {
 
       // Fetch stats
       const statsRes = await fetch(
-        `${API_ENDPOINTS.base}/moderation/admin/stats`,
+        `${API_ENDPOINTS.moderation}/admin/stats`,
         {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         }
@@ -145,7 +145,7 @@ export default function AdminModerationPanel() {
       if (!session) return;
 
       const response = await fetch(
-        `${API_ENDPOINTS.base}/moderation/admin/review`,
+        `${API_ENDPOINTS.moderation}/admin/review`,
         {
           method: 'POST',
           headers: {
