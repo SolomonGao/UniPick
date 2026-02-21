@@ -9,6 +9,7 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/node": "^9.5.4",
     "@astrojs/react": "^4.4.2",
     "@hookform/resolvers": "^5.2.2",
     "@supabase/supabase-js": "^2.94.1",

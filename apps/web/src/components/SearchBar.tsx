@@ -265,7 +265,7 @@ export default function SearchBar({
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setSortBy(opt.value)}
+                  onClick={() => setSortBy(opt.value as 'distance' | 'price' | 'created_at')}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     sortBy === opt.value
                       ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'

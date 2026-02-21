@@ -13,6 +13,7 @@ from app.models.item import Item, Favorite
 from app.schemas.item import ItemCreate, ItemResponse
 from app.schemas.errors import ErrorResponse, ValidationErrorResponse, NotFoundErrorResponse
 from app.core.security import get_current_user_id, get_current_user_id_optional
+from app.api.v1.moderation import moderate_item
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -122,6 +123,20 @@ async def create_item(
         await db.commit()
         await db.refresh(new_item)
         
+        # 异步内容审核
+        try:
+            moderation_result = await moderate_item(
+                db=db,
+                item_id=str(new_item.id),
+                user_id=str(user_id),
+                title=item_in.title,
+                description=item_in.description or ""
+            )
+            logger.info(f"商品 {new_item.id} 审核完成: {moderation_result.status}")
+        except Exception as e:
+            logger.error(f"商品 {new_item.id} 审核失败: {e}")
+            # 审核失败不影响商品创建
+        
         logger.info(f"用户 {user_id} 创建了商品: {new_item.id}")
         return new_item
         
@@ -230,6 +245,14 @@ async def list_items(
         if category:
             query = query.where(Item.category == category)
         
+        # 🔴 关键修复：只显示审核通过的商品，但用户自己可以看到自己的待审核商品
+        if user_id and str(user_id) == str(current_user_id):
+            # 查看自己的商品：可以看到所有状态
+            pass
+        else:
+            # 查看别人的商品或浏览列表：只显示已审核通过
+            query = query.where(Item.moderation_status == 'approved')
+        
         # 地理位置筛选 (PostGIS)
         if lat is not None and lng is not None and radius is not None:
             point = func.ST_GeogFromText(f"POINT({lng} {lat})")
@@ -301,6 +324,7 @@ async def list_items(
                 "id": item.id,
                 "title": item.title,
                 "price": item.price,
+                "original_price": item.original_price,
                 "description": item.description,
                 "location_name": location_name,
                 "category": item.category,
@@ -312,7 +336,8 @@ async def list_items(
                 "view_count": item.view_count or 0,
                 "favorite_count": fav_counts.get(item.id, 0),
                 "is_location_private": item.is_location_private,
-                "location_fuzzy": location_fuzzy
+                "location_fuzzy": location_fuzzy,
+                "moderation_status": item.moderation_status
             }
             
             if lat is not None and lng is not None:
@@ -351,6 +376,11 @@ async def get_item(
         if not item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="商品不存在")
         
+        # 🔴 关键修复：审核未通过的商品，非所有者无法查看
+        is_owner = str(item.user_id) == str(current_user_id) if current_user_id else False
+        if item.moderation_status != 'approved' and not is_owner:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="商品不存在或审核中")
+        
         # 修复1：同上，严格处理位置保密，对经纬度进行数学打码
         location_fuzzy = None
         lat_out = item.latitude
@@ -365,6 +395,7 @@ async def get_item(
             "id": item.id,
             "title": item.title,
             "price": item.price,
+            "original_price": item.original_price,
             "description": item.description,
             "location_name": item.location_name,
             "category": item.category,
@@ -376,7 +407,8 @@ async def get_item(
             "view_count": item.view_count or 0,
             "favorite_count": 0,
             "is_location_private": item.is_location_private,
-            "location_fuzzy": location_fuzzy
+            "location_fuzzy": location_fuzzy,
+            "moderation_status": item.moderation_status
         }
         
         return item_dict
@@ -400,7 +432,7 @@ async def get_item(
 )
 async def update_item(
     item_id: int = Path(..., gt=0, description="商品ID"),
-    item_update: ItemCreate = Body(...), # 修复4：使用 Body(...) 强制要求请求体，防止发送空 JSON 引发 500 崩溃
+    item_update: ItemCreate = Body(...),
     item: Item = Depends(require_item_owner),
     db: AsyncSession = Depends(get_db),
 ):
@@ -410,6 +442,10 @@ async def update_item(
         if item_update.category and item_update.category not in VALID_CATEGORIES:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="无效的商品分类")
         
+        # 价格降价检测：如果新价格低于当前价格，保存当前价格为原价
+        if item_update.price < item.price:
+            item.original_price = item.price
+        
         # 更新字段
         item.title = item_update.title
         item.price = item_update.price
@@ -417,8 +453,6 @@ async def update_item(
         item.category = item_update.category
         item.location_name = item_update.location_name
         item.images = item_update.images
-        
-        # 修复3：补充遗漏的隐私开关状态更新
         item.is_location_private = item_update.is_location_private
         
         # 更新地理位置

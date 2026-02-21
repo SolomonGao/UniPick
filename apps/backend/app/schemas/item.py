@@ -28,6 +28,8 @@ class ItemResponse(ItemBase):
     images: List[str]
     view_count: int = 0
     favorite_count: int = 0  # 收藏数
+    original_price: Optional[float] = None  # 原价（降价时显示）
+    moderation_status: Optional[str] = None  # 审核状态
     created_at: Optional[datetime] = None
     location_fuzzy: Optional[str] = None  # 模糊位置（保密时显示）
 

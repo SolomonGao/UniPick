@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
-import { Loader2, Package, Edit2, Trash2, Eye, MapPin, DollarSign } from 'lucide-react';
+import { Loader2, Package, Edit2, Trash2, Eye, MapPin, DollarSign, Plus } from 'lucide-react';
 import { API_ENDPOINTS } from '../lib/constants';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
@@ -11,16 +11,17 @@ interface Item {
   id: number;
   title: string;
   price: number;
+  original_price?: number | null;
   images: string[];
   location_name: string;
   category?: string;
   created_at: string;
   description?: string;
+  moderation_status?: 'pending' | 'approved' | 'flagged' | 'rejected';
 }
 
 const PAGE_SIZE = 12;
 
-// 分类映射
 const CATEGORY_LABELS: Record<string, string> = {
   electronics: '电子产品',
   furniture: '家具',
@@ -46,7 +47,14 @@ export default function MyListingsItem() {
       user_id: currentUserId,
     });
     
-    const response = await fetch(`${API_ENDPOINTS.items}/?${params}`);
+    // 🔴 关键修复：添加认证头，后端才能识别是当前用户
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {};
+    if (session) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+    
+    const response = await fetch(`${API_ENDPOINTS.items}/?${params}`, { headers });
     if (!response.ok) {
       throw new Error('Failed to fetch items');
     }
@@ -78,7 +86,6 @@ export default function MyListingsItem() {
     }
   }, [inView, hasNextPage, fetchNextPage]);
 
-  // 删除商品
   const handleDelete = async (itemId: number) => {
     if (!confirm('确定要删除这个商品吗？此操作不可恢复。')) return;
     
@@ -114,15 +121,15 @@ export default function MyListingsItem() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">我的发布</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">我的发布</h1>
             <p className="text-gray-500 dark:text-gray-400 mt-1">管理你发布的二手商品</p>
           </div>
         </div>
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-4 animate-pulse">
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 animate-pulse">
               <div className="flex gap-4">
-                <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+                <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-xl" />
                 <div className="flex-1 space-y-2">
                   <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
@@ -140,22 +147,22 @@ export default function MyListingsItem() {
       {/* 头部 */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">我的发布</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">我的发布</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">管理你发布的二手商品</p>
         </div>
         <a
           href="/sell"
-          className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
         >
-          <Package className="w-4 h-4" />
+          <Plus className="w-4 h-4" />
           发布新商品
         </a>
       </div>
 
       {/* 错误提示 */}
       {status === 'error' && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6">
-          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 mb-6">
+          <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
             <Loader2 className="w-5 h-5" />
             <span>{(error as Error)?.message || '加载失败'}</span>
           </div>
@@ -164,15 +171,17 @@ export default function MyListingsItem() {
 
       {/* 商品列表 */}
       {allItems.length === 0 ? (
-        <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
-          <Package className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-          <p className="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">还没有发布商品</p>
-          <p className="text-gray-400 dark:text-gray-500 mb-6">发布你的第一件二手商品吧！</p>
+        <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+          <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
+            <Package className="w-8 h-8 text-gray-400" />
+          </div>
+          <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">还没有发布商品</p>
+          <p className="text-gray-500 dark:text-gray-400 mb-6">发布你的第一件二手商品吧！</p>
           <a
             href="/sell"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
           >
-            <Package className="w-4 h-4" />
+            <Plus className="w-4 h-4" />
             立即发布
           </a>
         </div>
@@ -181,19 +190,19 @@ export default function MyListingsItem() {
           {allItems.map((item) => (
             <div
               key={item.id}
-              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 hover:shadow-lg hover:border-gray-200 dark:hover:border-gray-600 transition-all"
             >
               <div className="flex gap-4">
                 {/* 图片 */}
-                <div className="w-24 h-24 flex-shrink-0">
+                <div className="w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700">
                   {item.images && item.images.length > 0 ? (
                     <img
                       src={item.images[0]}
                       alt={item.title}
-                      className="w-full h-full object-cover rounded-lg"
+                      className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                    <div className="w-full h-full flex items-center justify-center">
                       <Package className="w-8 h-8 text-gray-300 dark:text-gray-500" />
                     </div>
                   )}
@@ -203,15 +212,37 @@ export default function MyListingsItem() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">{item.title}</h3>
-                      <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        <span className="flex items-center gap-1">
+                      <h3 className="font-semibold text-gray-900 dark:text-white truncate">{item.title}</h3>
+                      <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center gap-2">
                           <DollarSign className="w-4 h-4" />
-                          ${item.price}
-                        </span>
+                          {/* 如果有原价且降价了，显示划掉的原价 */}
+                          {item.original_price && item.original_price > item.price && (
+                            <span className="text-sm text-gray-400 line-through decoration-gray-400">
+                              ${item.original_price}
+                            </span>
+                          )}
+                          <span className="text-lg font-bold text-gray-900 dark:text-white">
+                            ${item.price}
+                          </span>
+                        </div>
                         {item.category && (
-                          <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">
+                          <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-xs">
                             {CATEGORY_LABELS[item.category] || item.category}
+                          </span>
+                        )}
+                        {/* 审核状态标签 */}
+                        {item.moderation_status && item.moderation_status !== 'approved' && (
+                          <span className={`px-2 py-0.5 rounded-lg text-xs font-medium ${
+                            item.moderation_status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              : item.moderation_status === 'flagged'
+                              ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          }`}>
+                            {item.moderation_status === 'pending' && '审核中'}
+                            {item.moderation_status === 'flagged' && '待审核'}
+                            {item.moderation_status === 'rejected' && '已拒绝'}
                           </span>
                         )}
                         <span className="flex items-center gap-1">
@@ -219,30 +250,30 @@ export default function MyListingsItem() {
                           {item.location_name || '未设置'}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                      <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
                         发布于 {new Date(item.created_at).toLocaleDateString('zh-CN')}
                       </p>
                     </div>
 
                     {/* 操作按钮 */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <a
                         href={`/items/${item.id}?from=my-listings`}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                        className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                         title="查看"
                       >
                         <Eye className="w-4 h-4" />
                       </a>
                       <button
                         onClick={() => window.location.href = `/sell?edit=${item.id}`}
-                        className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
+                        className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                         title="编辑"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(item.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                         title="删除"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -257,7 +288,7 @@ export default function MyListingsItem() {
           {/* 加载更多 */}
           <div ref={ref} className="flex justify-center items-center py-8">
             {isFetchingNextPage ? (
-              <Loader2 className="w-6 h-6 animate-spin text-orange-600" />
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
             ) : hasNextPage ? (
               <span className="text-gray-400 dark:text-gray-500 text-sm">向下滚动加载更多</span>
             ) : allItems.length > 0 ? (

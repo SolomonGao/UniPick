@@ -12,6 +12,7 @@ interface Item {
   id: number;
   title: string;
   price: number;
+  original_price?: number | null;
   images: string[];
   location_name: string;
   latitude: number;
@@ -93,9 +94,17 @@ const ItemCard = memo(({
             <span className="label">
               {item.category || 'Item'}
             </span>
-            <span className="text-2xl font-semibold text-gray-900 dark:text-white">
-              ${item.price.toLocaleString()}
-            </span>
+            <div className="flex items-center gap-2">
+              {/* 如果有原价且降价了，显示划掉的原价 */}
+              {item.original_price && item.original_price > item.price && (
+                <span className="text-sm text-gray-400 line-through decoration-gray-400">
+                  ${item.original_price.toLocaleString()}
+                </span>
+              )}
+              <span className="text-2xl font-semibold text-gray-900 dark:text-white">
+                ${item.price.toLocaleString()}
+              </span>
+            </div>
           </div>
 
           {/* 标题 */}

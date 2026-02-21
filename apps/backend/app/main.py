@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.items import items, favorites
+from app.api.v1.users import profile as user_profile
+from app.api.v1 import moderation
 from app.core.database import get_db
 from sqlalchemy import text
 
@@ -27,6 +29,8 @@ app.add_middleware(
 
 app.include_router(items.router, prefix="/api/v1/items", tags=["items"])
 app.include_router(favorites.router, prefix="/api/v1/items", tags=["favorites"])
+app.include_router(user_profile.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(moderation.router, prefix="/api/v1/moderation", tags=["moderation"])
 
 @app.get("/")
 async def health_check():

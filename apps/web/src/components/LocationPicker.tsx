@@ -284,7 +284,7 @@ export default function LocationPicker({
           <input
             type="text"
             value={manualInput}
-            onChange={handleManualInput}
+            onChange={handleManualInputChange}
             placeholder="例如: VT Library, Blacksburg"
             className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none dark:bg-gray-800 dark:text-white"
           />

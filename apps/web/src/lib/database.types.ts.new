@@ -1,0 +1,4 @@
+npm warn exec The following package was not found and will be installed: supabase@2.76.12
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+Must specify one of --local, --linked, --project-id, or --db-url
+Try rerunning the command with --debug to troubleshoot the error.
