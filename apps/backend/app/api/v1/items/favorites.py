@@ -3,7 +3,7 @@
 修复竞态条件问题，使用数据库原子操作
 """
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, update, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -11,6 +11,7 @@ import logging
 
 from app.core.database import get_db
 from app.core.security import get_current_user_id, get_current_user_id_optional
+from app.core.rate_limit import limiter, RateLimits
 from app.models.item import Item, Favorite, ViewHistory
 from app.schemas.item import ItemResponse
 
@@ -19,7 +20,9 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/{item_id}/view", status_code=status.HTTP_200_OK)
+@limiter.limit(RateLimits.VIEW)  # 🔧 新增：限制浏览记录频率
 async def record_view(
+    request: Request,  # 🔧 新增：用于限流
     item_id: int,
     db: AsyncSession = Depends(get_db),
     user_id: Optional[str] = Depends(get_current_user_id_optional)
@@ -110,7 +113,9 @@ async def record_view(
 
 
 @router.post("/{item_id}/favorite", status_code=status.HTTP_200_OK)
+@limiter.limit(RateLimits.FAVORITE)  # 🔧 新增：限制收藏操作频率
 async def toggle_favorite(
+    request: Request,  # 🔧 新增：用于限流
     item_id: int,
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id)
