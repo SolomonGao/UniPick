@@ -5,7 +5,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, update
+from sqlalchemy import select, func, desc, update, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import logging
 
@@ -54,6 +54,9 @@ async def record_view(
                     .values(view_count=Item.view_count + 1)
                 )
                 await db.commit()
+                
+                # 🔧 新增：清理旧浏览历史，只保留最近50条
+                await _cleanup_view_history(db, user_id)
                 
                 # 获取更新后的浏览量
                 result = await db.execute(
@@ -267,3 +270,36 @@ async def get_user_view_history(
     except Exception as e:
         logger.error(f"Error getting view history: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# 🔧 新增：清理旧浏览历史，只保留最近50条
+async def _cleanup_view_history(db: AsyncSession, user_id: str):
+    """
+    清理用户旧的浏览历史，只保留最近50条记录
+    
+    这个函数在记录新浏览时自动调用，保持浏览历史表不会无限增长
+    """
+    try:
+        # 删除第50条之后的所有记录
+        await db.execute(
+            text("""
+                DELETE FROM view_history
+                WHERE id IN (
+                    SELECT id FROM (
+                        SELECT id, ROW_NUMBER() OVER (
+                            PARTITION BY user_id 
+                            ORDER BY viewed_at DESC
+                        ) as rn
+                        FROM view_history
+                        WHERE user_id = :user_id
+                    ) ranked
+                    WHERE rn > 50
+                )
+            """),
+            {'user_id': user_id}
+        )
+        await db.commit()
+    except Exception as e:
+        # 清理失败不应该影响主流程，只记录日志
+        logger.warning(f"Failed to cleanup view history for user {user_id}: {e}")
+        await db.rollback()

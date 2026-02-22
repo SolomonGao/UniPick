@@ -256,7 +256,11 @@ class ModerationService:
         offset: int = 0,
         content_type: str = None
     ) -> list:
-        """获取待人工审核的内容"""
+        """获取待人工审核的内容
+        
+        🔧 修复：对于商品(item)类型，同时获取商品图片用于人工审核
+        """
+        # 基础查询 moderation_logs
         query = """
             SELECT 
                 m.*,
@@ -274,9 +278,34 @@ class ModerationService:
         query += " ORDER BY m.created_at DESC LIMIT :limit OFFSET :offset"
         
         result = await db.execute(text(query), params)
-        
         rows = result.mappings().all()
-        return [dict(row) for row in rows]
+        items = [dict(row) for row in rows]
+        
+        # 🔧 修复：对于商品类型，获取图片信息用于人工审核
+        for item in items:
+            if item.get('content_type') == 'item':
+                try:
+                    item_id = int(item['content_id'])
+                    img_result = await db.execute(
+                        text("""
+                            SELECT images, title, description, price, location_name
+                            FROM items 
+                            WHERE id = :item_id
+                        """),
+                        {'item_id': item_id}
+                    )
+                    item_data = img_result.mappings().one_or_none()
+                    if item_data:
+                        item['item_images'] = item_data['images'] or []
+                        item['item_title'] = item_data['title']
+                        item['item_description'] = item_data['description']
+                        item['item_price'] = float(item_data['price']) if item_data['price'] else 0
+                        item['item_location'] = item_data['location_name']
+                except Exception as e:
+                    logger.error(f"Error fetching item details for moderation: {e}")
+                    item['item_images'] = []
+        
+        return items
     
     @staticmethod
     async def manual_review(
