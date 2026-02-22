@@ -83,7 +83,7 @@ export default function LoginForm() {
             <input
               {...register('email')}
               type="email"
-              placeholder="yourname@example.com"
+              placeholder="yourname@vt.edu"
               disabled={loading}
               className={`w-full h-12 pl-12 pr-4 bg-white dark:bg-gray-800 border-2 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 transition-all duration-200 focus:outline-none ${
                 errors.email 

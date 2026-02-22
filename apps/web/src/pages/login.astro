@@ -4,13 +4,13 @@ import LoginForm from "../components/LoginForm";
 import GuestRedirect from "../components/GuestRedirect";
 ---
 
-<Layout title="Login - UniPick">
+<Layout title="登录 - UniPick">
   <GuestRedirect client:only="react" redirectTo="/">
     <div class="min-h-[80vh] flex flex-col justify-center items-center px-4">
       <div class="w-full max-w-md">
         <div class="text-center mb-8">
           <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">
-            Signin <span class="text-orange-600">UniPick</span>
+            登录 <span class="text-orange-600">UniPick</span>
           </h2>
           <p class="text-gray-500 dark:text-gray-400">留学生专属二手交易平台</p>
         </div>
@@ -21,9 +21,9 @@ import GuestRedirect from "../components/GuestRedirect";
 
         <div class="mt-6 text-center">
           <p class="text-sm text-gray-500 dark:text-gray-400">
-            Don't have an account?
+            还没有账号？
             <a href="/register" class="font-medium text-orange-600 hover:text-orange-500 hover:underline">
-              Create one
+              立即注册
             </a>
           </p>
         </div>

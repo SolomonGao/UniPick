@@ -26,8 +26,8 @@ const DEFAULT_LOCATION = {
 };
 
 // 调试日志
-console.log('LocationPicker - MAPBOX_ACCESS_TOKEN:', MAPBOX_ACCESS_TOKEN ? '已配置' : '未配置');
-console.log('LocationPicker - Token 格式:', MAPBOX_ACCESS_TOKEN?.startsWith('pk.') ? '有效' : '无效');
+console.log('LocationPicker - MAPBOX_ACCESS_TOKEN:', MAPBOX_ACCESS_TOKEN ? 'Configured' : 'Not configured');
+console.log('LocationPicker - Token format:', MAPBOX_ACCESS_TOKEN?.startsWith('pk.') ? 'Valid' : 'Invalid');
 
 export default function LocationPicker({ 
   latitude, 
@@ -57,7 +57,7 @@ export default function LocationPicker({
   // 获取用户当前位置并设置为初始位置
   useEffect(() => {
     if (!navigator.geolocation) {
-      console.log('浏览器不支持地理定位，使用默认位置');
+      console.log('Geolocation not supported, using default location');
       // 使用默认位置并获取名称
       if (!locationName) {
         reverseGeocode(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lng).then(name => {
@@ -72,7 +72,7 @@ export default function LocationPicker({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        console.log('获取到用户位置:', latitude, longitude);
+        console.log('Got user location:', latitude, longitude);
         
         // 更新地图视图和标记位置
         setViewState({ latitude, longitude, zoom: 15 });
@@ -86,7 +86,7 @@ export default function LocationPicker({
         });
       },
       (error) => {
-        console.error('获取位置失败:', error);
+        console.error('Failed to get location:', error);
         setIsLocating(false);
         // 使用默认位置
         if (!locationName) {
@@ -132,7 +132,7 @@ export default function LocationPicker({
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!searchQuery.trim() || !MAPBOX_ACCESS_TOKEN) {
-      setError('Please enter a location to search');
+      setError('请输入要搜索的地点');
       return;
     }
 
@@ -146,7 +146,7 @@ export default function LocationPicker({
       );
       
       if (!response.ok) {
-        throw new Error(`Search failed: ${response.status}`);
+        throw new Error(`搜索失败: ${response.status}`);
       }
       
       const data = await response.json();
@@ -160,11 +160,11 @@ export default function LocationPicker({
         setManualInput(name);
         onChange(lat, lng, name);
       } else {
-        setError('Location not found. Please try a different search term.');
+        setError('未找到该地点，请尝试其他关键词');
       }
     } catch (err: any) {
       console.error('Search error:', err);
-      setError(err.message || 'Search failed. Please try again.');
+      setError(err.message || '搜索失败，请重试');
     } finally {
       setIsLoading(false);
     }

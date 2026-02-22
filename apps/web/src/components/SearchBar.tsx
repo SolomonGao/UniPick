@@ -32,12 +32,12 @@ const CATEGORIES = [
 ];
 
 const RADIUS_OPTIONS = [
-  { value: 1, label: '1 mile' },
-  { value: 5, label: '5 miles' },
-  { value: 10, label: '10 miles' },
-  { value: 25, label: '25 miles' },
-  { value: 50, label: '50 miles' },
-  { value: 100, label: '100 miles' },
+  { value: 1, label: '1 英里' },
+  { value: 5, label: '5 英里' },
+  { value: 10, label: '10 英里' },
+  { value: 25, label: '25 英里' },
+  { value: 50, label: '50 英里' },
+  { value: 100, label: '100 英里' },
 ];
 
 const SORT_OPTIONS = [

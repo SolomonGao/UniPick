@@ -43,21 +43,29 @@ class ModerationService:
         """
         审核文本内容
         
+        原则：
+        - AI 明确通过的内容 → 直接通过
+        - AI 发现可疑/违规 → 人工审核
+        - AI 出错/无法调用 → 人工审核（安全优先）
+        
         Returns:
             {
                 'flagged': bool,
                 'categories': {category: bool},
                 'scores': {category: float},
-                'max_score': float
+                'max_score': float,
+                'error': str | None
             }
         """
+        # 🔴 没有配置 API key → 人工审核（不能默认通过）
         if not openai_client:
-            logger.warning("OpenAI client not configured, skipping moderation")
+            logger.warning("OpenAI client not configured, routing to manual review")
             return {
-                'flagged': False,
-                'categories': {},
-                'scores': {},
-                'max_score': 0.0
+                'flagged': True,  # 标记为需要审核
+                'categories': {'no_api': True},
+                'scores': {'no_api': 0.5},
+                'max_score': 0.5,  # 0.5 会触发 flagged 状态
+                'error': 'OpenAI client not configured'
             }
         
         try:
@@ -84,17 +92,18 @@ class ModerationService:
                 'flagged': result.flagged,
                 'categories': categories,
                 'scores': scores,
-                'max_score': max_score
+                'max_score': max_score,
+                'error': None
             }
             
         except Exception as e:
             logger.error(f"Moderation API error: {e}")
-            # 出错时默认通过，避免阻塞正常流程
+            # 🔴 API 出错 → 人工审核（不能默认通过）
             return {
-                'flagged': False,
-                'categories': {},
-                'scores': {},
-                'max_score': 0.0,
+                'flagged': True,  # 标记为需要审核
+                'categories': {'api_error': True},
+                'scores': {'api_error': 0.5},
+                'max_score': 0.5,  # 0.5 会触发 flagged 状态
                 'error': str(e)
             }
     
@@ -103,26 +112,34 @@ class ModerationService:
         """
         根据审核结果确定状态
         
+        原则：只有 AI 明确判定为正常的内容才直接通过
+        - 正常内容 → approved（直接通过）
+        - 可疑内容 → flagged（人工审核）
+        - 违规内容 → rejected（人工复核）
+        - API 错误/无 API → flagged（人工审核）
+        
         Returns:
-            'approved' - 通过
-            'flagged' - 可疑，需要人工审核
-            'rejected' - 拒绝
+            'approved' - AI 判定正常，直接通过
+            'flagged' - 可疑或需要人工审核
+            'rejected' - 明显违规
         """
+        # 如果有错误（API 出错或无 API key）→ 人工审核
         if moderation_result.get('error'):
-            return 'pending'  # API 出错，标记为待审核
+            logger.info(f"Moderation has error, routing to manual review: {moderation_result.get('error')}")
+            return 'flagged'  # 不是 pending，是 flagged（需要人工审核）
         
         max_score = moderation_result.get('max_score', 0)
         flagged = moderation_result.get('flagged', False)
         
-        # 明显违规
-        if max_score > 0.9 or flagged:
+        # 🔴 明显违规（分数很高）→ rejected（人工复核）
+        if max_score > 0.8 or flagged:
             return 'rejected'
         
-        # 可疑内容
-        if max_score > 0.5:
+        # 🟡 轻度可疑 → flagged（人工审核）
+        if max_score > 0.3:
             return 'flagged'
         
-        # 正常内容
+        # 🟢 分数很低，AI 判定正常 → approved（直接通过）
         return 'approved'
     
     @classmethod
@@ -223,22 +240,27 @@ class ModerationService:
         db: AsyncSession,
         status: str = 'flagged',
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
+        content_type: str = None
     ) -> list:
         """获取待人工审核的内容"""
-        result = await db.execute(
-            text("""
-                SELECT 
-                    m.*,
-                    p.email as user_email
-                FROM moderation_logs m
-                LEFT JOIN profiles p ON m.user_id = p.id
-                WHERE m.status = :status
-                ORDER BY m.created_at DESC
-                LIMIT :limit OFFSET :offset
-            """),
-            {'status': status, 'limit': limit, 'offset': offset}
-        )
+        query = """
+            SELECT 
+                m.*,
+                p.email as user_email
+            FROM moderation_logs m
+            LEFT JOIN profiles p ON m.user_id = p.id
+            WHERE m.status = :status
+        """
+        params = {'status': status, 'limit': limit, 'offset': offset}
+        
+        if content_type:
+            query += " AND m.content_type = :content_type"
+            params['content_type'] = content_type
+        
+        query += " ORDER BY m.created_at DESC LIMIT :limit OFFSET :offset"
+        
+        result = await db.execute(text(query), params)
         
         rows = result.mappings().all()
         return [dict(row) for row in rows]

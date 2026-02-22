@@ -8,7 +8,7 @@ from typing import List, Optional
 import logging
 
 from app.core.database import get_db
-from app.core.permissions import require_auth
+from app.core.permissions import require_auth, require_admin, is_admin_user
 from app.core.security import get_current_user_id
 from app.services.moderation import ModerationService
 from app.schemas.errors import ErrorResponse
@@ -110,19 +110,16 @@ async def moderate_profile(
 )
 async def get_review_queue(
     status: str = Query('flagged', enum=['flagged', 'pending', 'rejected']),
+    content_type: Optional[str] = Query(None, enum=['item', 'profile'], description="按内容类型筛选"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id)
+    user_id: str = Depends(require_admin)
 ):
     """
     获取待人工审核的内容（管理员接口）
     """
-    # TODO: 添加管理员权限检查
-    # if not await is_admin(user_id):
-    #     raise HTTPException(status_code=403, detail="无权限")
-    
-    items = await ModerationService.get_pending_review(db, status, limit, offset)
+    items = await ModerationService.get_pending_review(db, status, limit, offset, content_type)
     return items
 
 
@@ -139,13 +136,11 @@ async def get_review_queue(
 async def manual_review(
     review: ModerationReviewRequest,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id)
+    user_id: str = Depends(require_admin)
 ):
     """
     人工审核内容（管理员接口）
     """
-    # TODO: 添加管理员权限检查
-    
     if review.decision not in ['approved', 'rejected']:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -173,13 +168,11 @@ async def manual_review(
 )
 async def get_moderation_stats(
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id)
+    user_id: str = Depends(require_admin)
 ):
     """
     获取审核统计（管理员接口）
     """
-    # TODO: 添加管理员权限检查
-    
     stats = await ModerationService.get_stats(db)
     return ModerationStats(**stats)
 
@@ -191,7 +184,7 @@ async def get_moderation_stats(
 async def get_moderation_detail(
     log_id: int,
     db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id)
+    user_id: str = Depends(require_admin)
 ):
     """
     获取审核详情（管理员接口）

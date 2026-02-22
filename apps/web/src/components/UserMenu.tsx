@@ -14,20 +14,58 @@ import {
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import '../styles/design-system.css';
+import { API_ENDPOINTS } from '../lib/constants';
+
+interface UserProfile {
+  id: string;
+  email: string;
+  role?: string;
+  is_admin?: boolean;
+}
 
 export default function UserMenu() {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+
+  // 获取用户资料（包含管理员状态）
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const response = await fetch(`${API_ENDPOINTS.items.replace('/api/v1/items', '/api/v1/users')}/me`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setProfile(data);
+      }
+    } catch (error) {
+      console.error('获取用户资料失败:', error);
+    }
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      }
       setIsLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -139,15 +177,18 @@ export default function UserMenu() {
                 <span>我的发布</span>
               </a>
               
-              <a 
-                href="/admin/moderation" 
-                className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-              >
-                <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                  <Shield className="w-4 h-4 text-purple-600" />
-                </div>
-                <span>内容审核</span>
-              </a>
+              {/* 仅管理员显示审核入口 */}
+              {profile?.is_admin && (
+                <a 
+                  href="/admin/moderation" 
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <span>内容审核</span>
+                </a>
+              )}
               
               <a 
                 href="/profile?tab=favorites" 
