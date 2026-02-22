@@ -1,13 +1,13 @@
 """
-收藏和浏览记录 API - 优化版本
-添加并发控制和缓存
+收藏和浏览记录 API - 安全修复版本
+修复竞态条件问题，使用数据库原子操作
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-import asyncio
+import logging
 
 from app.core.database import get_db
 from app.core.security import get_current_user_id, get_current_user_id_optional
@@ -15,15 +15,7 @@ from app.models.item import Item, Favorite, ViewHistory
 from app.schemas.item import ItemResponse
 
 router = APIRouter()
-
-# 简单的内存锁，防止同一商品并发更新浏览量
-_view_locks = {}
-
-def get_lock(item_id: int):
-    """获取或创建锁"""
-    if item_id not in _view_locks:
-        _view_locks[item_id] = asyncio.Lock()
-    return _view_locks[item_id]
+logger = logging.getLogger(__name__)
 
 
 @router.post("/{item_id}/view", status_code=status.HTTP_200_OK)
@@ -36,49 +28,31 @@ async def record_view(
     记录商品浏览
     - 未登录用户：每次访问都增加浏览量
     - 登录用户：只有第一次浏览增加浏览量，后续只更新时间
+    
+    🔧 修复：使用数据库原子操作避免竞态条件
     """
     from datetime import datetime
     
     try:
         # 先检查商品是否存在
-        result = await db.execute(select(Item.id, Item.view_count).where(Item.id == item_id))
-        item_data = result.first()
-        
-        if not item_data:
+        result = await db.execute(select(Item.id).where(Item.id == item_id))
+        if not result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Item not found")
         
-        # 如果用户已登录，检查是否已经浏览过
+        # 🔧 修复：使用数据库原子操作增加浏览量，避免竞态条件
         if user_id:
-            result = await db.execute(
-                select(ViewHistory).where(
-                    ViewHistory.user_id == user_id,
-                    ViewHistory.item_id == item_id
-                )
-            )
-            existing = result.scalar_one_or_none()
-            
-            if existing:
-                # 已经浏览过，只更新时间，不增加浏览量
-                existing.viewed_at = datetime.utcnow()
-                await db.commit()
+            # 尝试插入浏览记录（利用唯一约束）
+            try:
+                view_history = ViewHistory(user_id=user_id, item_id=item_id)
+                db.add(view_history)
+                await db.flush()  # 立即执行，如果重复会抛出 IntegrityError
                 
-                # 返回当前浏览量（不增加）
-                result = await db.execute(
-                    select(Item.view_count).where(Item.id == item_id)
-                )
-                current_count = result.scalar()
-                return {"message": "View updated", "view_count": current_count, "is_new": False}
-            else:
-                # 第一次浏览，增加浏览量并创建记录
+                # 插入成功，是第一次浏览，增加浏览量
                 await db.execute(
                     update(Item)
                     .where(Item.id == item_id)
                     .values(view_count=Item.view_count + 1)
                 )
-                
-                # 创建浏览记录
-                view_history = ViewHistory(user_id=user_id, item_id=item_id)
-                db.add(view_history)
                 await db.commit()
                 
                 # 获取更新后的浏览量
@@ -87,8 +61,30 @@ async def record_view(
                 )
                 new_count = result.scalar()
                 return {"message": "View recorded", "view_count": new_count, "is_new": True}
+                
+            except IntegrityError:
+                # 已经浏览过，回滚插入操作
+                await db.rollback()
+                
+                # 只更新时间，不增加浏览量
+                await db.execute(
+                    update(ViewHistory)
+                    .where(
+                        ViewHistory.user_id == user_id,
+                        ViewHistory.item_id == item_id
+                    )
+                    .values(viewed_at=datetime.utcnow())
+                )
+                await db.commit()
+                
+                # 返回当前浏览量
+                result = await db.execute(
+                    select(Item.view_count).where(Item.id == item_id)
+                )
+                current_count = result.scalar()
+                return {"message": "View updated", "view_count": current_count, "is_new": False}
         else:
-            # 未登录用户，直接增加浏览量（不记录历史）
+            # 未登录用户，直接增加浏览量（使用原子操作）
             await db.execute(
                 update(Item)
                 .where(Item.id == item_id)
@@ -106,7 +102,6 @@ async def record_view(
         raise
     except Exception as e:
         await db.rollback()
-        logger = logging.getLogger(__name__)
         logger.error(f"Error recording view: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -159,7 +154,6 @@ async def toggle_favorite(
         raise
     except Exception as e:
         await db.rollback()
-        logger = logging.getLogger(__name__)
         logger.error(f"Error toggling favorite: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -210,7 +204,6 @@ async def get_item_stats(
     except HTTPException:
         raise
     except Exception as e:
-        logger = logging.getLogger(__name__)
         logger.error(f"Error getting stats: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -242,7 +235,6 @@ async def get_user_favorites(
         return items
         
     except Exception as e:
-        logger = logging.getLogger(__name__)
         logger.error(f"Error getting favorites: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -273,6 +265,5 @@ async def get_user_view_history(
         return items
         
     except Exception as e:
-        logger = logging.getLogger(__name__)
         logger.error(f"Error getting view history: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")

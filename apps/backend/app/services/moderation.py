@@ -211,18 +211,30 @@ class ModerationService:
         status: str,
         log_id: int
     ):
-        """更新内容表的审核状态"""
-        if content_type == 'item':
-            table = 'items'
-            # item id 是整数
-            id_value = int(content_id)
-        elif content_type == 'profile':
-            table = 'profiles'
-            # profile id 是 UUID 字符串
-            id_value = content_id
-        else:
-            return
+        """更新内容表的审核状态
         
+        🔧 修复：添加表名白名单验证，防止 SQL 注入
+        """
+        # 表名白名单验证
+        VALID_TABLES = {
+            'item': {'table': 'items', 'id_type': 'int'},
+            'profile': {'table': 'profiles', 'id_type': 'uuid'}
+        }
+        
+        if content_type not in VALID_TABLES:
+            logger.error(f"Invalid content_type for moderation update: {content_type}")
+            raise ValueError(f"Invalid content_type: {content_type}")
+        
+        table_config = VALID_TABLES[content_type]
+        table = table_config['table']
+        
+        # 根据类型转换 ID
+        if table_config['id_type'] == 'int':
+            id_value = int(content_id)
+        else:
+            id_value = content_id
+        
+        # 使用参数化查询（表名已通过白名单验证）
         await db.execute(
             text(f"""
                 UPDATE {table} 
@@ -234,6 +246,7 @@ class ModerationService:
             {'status': status, 'log_id': log_id, 'content_id': id_value}
         )
         await db.commit()
+        logger.info(f"Updated moderation status for {content_type} {content_id} -> {status}")
     
     @staticmethod
     async def get_pending_review(
