@@ -15,6 +15,7 @@ import {
   Check
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { API_ENDPOINTS } from '../lib/constants';
 import { toast } from 'sonner';
 
 interface UserProfile {
@@ -29,6 +30,7 @@ interface UserProfile {
   university?: string;
   notification_email?: boolean;
   show_phone?: boolean;
+  moderation_status?: 'pending' | 'approved' | 'flagged' | 'rejected';
 }
 
 interface UserSettingsModalProps {
@@ -121,7 +123,7 @@ export default function UserSettingsModal({
     }
   };
 
-  // 保存资料
+  // 保存资料（调用后端 API，触发审核）
   const handleSaveProfile = async () => {
     setIsLoading(true);
     try {
@@ -140,15 +142,31 @@ export default function UserSettingsModal({
         return;
       }
 
-      const { error } = await supabase
-        .from('profiles')
-        .update(updateData)
-        .eq('id', profile.id);
+      // 🔴 关键：调用后端 API，触发审核流程
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('请先登录');
+        return;
+      }
 
-      if (error) throw error;
+      const response = await fetch(`${API_ENDPOINTS.users}/me`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(updateData)
+      });
 
-      toast.success('资料保存成功');
-      onProfileUpdate({ ...profile, ...updateData });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || '保存失败');
+      }
+
+      const updatedProfile = await response.json();
+      
+      toast.success('资料保存成功，等待审核');
+      onProfileUpdate(updatedProfile);
     } catch (error: any) {
       console.error('保存资料失败:', error);
       toast.error(error.message || '保存失败');

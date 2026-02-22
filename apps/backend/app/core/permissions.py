@@ -6,11 +6,73 @@ from functools import wraps
 from typing import Optional
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.core.database import get_db
 from app.core.security import get_current_user_id
 from app.models.item import Item
+
+
+# 管理员邮箱列表（硬编码，也可以通过数据库配置）
+ADMIN_EMAILS = {
+    "admin@unipick.app",
+    "admin@vt.edu",
+    # 添加你的邮箱在这里
+}
+
+
+async def is_admin_user(
+    user_id: str,
+    db: AsyncSession
+) -> bool:
+    """
+    检查用户是否为管理员
+    1. 检查邮箱是否在 ADMIN_EMAILS 列表中
+    2. 检查 profiles 表中的 role 字段是否为 'admin'
+    """
+    if not user_id:
+        return False
+    
+    try:
+        # 从 profiles 表查询用户信息和角色
+        result = await db.execute(
+            text("SELECT email, role FROM profiles WHERE id = :user_id"),
+            {"user_id": user_id}
+        )
+        profile = result.mappings().one_or_none()
+        
+        if not profile:
+            return False
+        
+        # 检查硬编码的管理员邮箱
+        if profile.get("email") in ADMIN_EMAILS:
+            return True
+        
+        # 检查 role 字段
+        if profile.get("role") == "admin":
+            return True
+        
+        return False
+    except Exception:
+        return False
+
+
+async def require_admin(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
+) -> str:
+    """
+    要求用户必须是管理员
+    用于管理员专属接口
+    """
+    if not user_id:
+        raise AuthenticationRequired()
+    
+    is_admin = await is_admin_user(user_id, db)
+    if not is_admin:
+        raise PermissionDenied("需要管理员权限")
+    
+    return user_id
 
 
 class PermissionDenied(HTTPException):

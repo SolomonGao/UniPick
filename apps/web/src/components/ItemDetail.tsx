@@ -76,10 +76,23 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
   const [stats, setStats] = useState<ItemStats>({ view_count: 0, favorite_count: 0, is_favorited: false });
   const [isImageLoading, setIsImageLoading] = useState(true);
   const [sellerProfile, setSellerProfile] = useState<SellerProfile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setCurrentUserId(session?.user?.id ?? null);
+      
+      // 检查是否为管理员
+      if (session) {
+        fetch(`${API_ENDPOINTS.items.replace('/api/v1/items', '/api/v1/users')}/me`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        })
+        .then(res => res.json())
+        .then(profile => {
+          setIsAdmin(profile.is_admin || false);
+        })
+        .catch(() => setIsAdmin(false));
+      }
     });
     
     const urlParams = new URLSearchParams(window.location.search);
@@ -89,30 +102,32 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
     }
   }, []);
 
-  // 获取卖家信息
+  // 获取卖家信息（使用公开接口，审核中时显示已审核版本）
   const fetchSellerProfile = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      
-      if (error) throw error;
-      
-      if (data) {
-        setSellerProfile({
-          id: data.id,
-          username: (data as any).username,
-          full_name: (data as any).full_name,
-          avatar_url: (data as any).avatar_url,
-          bio: (data as any).bio,
-          university: (data as any).university,
-          campus: (data as any).campus,
-          phone: (data as any).phone,
-          show_phone: (data as any).show_phone || false,
-        });
+      // 🔴 关键：使用 /public 接口，审核中时显示已审核的老资料
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
       }
+      
+      const response = await fetch(`${API_ENDPOINTS.users}/${userId}/public`, { headers });
+      if (!response.ok) throw new Error('获取卖家资料失败');
+      
+      const data = await response.json();
+      
+      setSellerProfile({
+        id: data.id,
+        username: data.username,
+        full_name: data.full_name,
+        avatar_url: data.avatar_url,
+        bio: data.bio,
+        university: data.university,
+        campus: data.campus,
+        phone: data.phone,
+        show_phone: data.show_phone || false,
+      });
     } catch (err) {
       console.error('获取卖家资料失败:', err);
     }
@@ -366,8 +381,8 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
                   {item.category}
                 </span>
               )}
-              {/* 审核状态标签 - 仅所有者可见 */}
-              {isOwner && item.moderation_status && item.moderation_status !== 'approved' && (
+              {/* 审核状态标签 - 仅所有者和管理员可见 */}
+              {(isOwner || isAdmin) && item.moderation_status && item.moderation_status !== 'approved' && (
                 <span className={`inline-flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-full ${
                   item.moderation_status === 'pending'
                     ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'

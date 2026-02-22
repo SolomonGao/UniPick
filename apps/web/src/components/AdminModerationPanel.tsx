@@ -80,14 +80,62 @@ export default function AdminModerationPanel() {
   const [items, setItems] = useState<ModerationItem[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [statusFilter, setStatusFilter] = useState<'flagged' | 'pending' | 'rejected' | 'approved'>('flagged');
   const [expandedItem, setExpandedItem] = useState<number | null>(null);
   const [reviewNote, setReviewNote] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [contentTypeFilter, setContentTypeFilter] = useState<'all' | 'item' | 'profile'>('all');
+
+  // 检查是否为管理员
+  useEffect(() => {
+    checkAdminStatus();
+  }, []);
+
+  const checkAdminStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log('No session found');
+        setIsAdmin(false);
+        return;
+      }
+
+      console.log('Checking admin status...');
+      const response = await fetch(
+        `${API_ENDPOINTS.users}/me`,
+        {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        }
+      );
+
+      console.log('Response status:', response.status);
+      
+      if (response.ok) {
+        const profile = await response.json();
+        console.log('Profile received:', profile);
+        console.log('is_admin:', profile.is_admin);
+        console.log('role:', profile.role);
+        setIsAdmin(profile.is_admin || false);
+        if (profile.is_admin) {
+          fetchData();
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to check admin status:', response.status, errorText);
+        setIsAdmin(false);
+      }
+    } catch (error) {
+      console.error('检查管理员状态失败:', error);
+      setIsAdmin(false);
+    }
+  };
 
   useEffect(() => {
-    fetchData();
-  }, [statusFilter]);
+    if (isAdmin) {
+      fetchData();
+    }
+  }, [statusFilter, contentTypeFilter, isAdmin]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -99,8 +147,9 @@ export default function AdminModerationPanel() {
       }
 
       // Fetch review queue
+      const contentTypeParam = contentTypeFilter !== 'all' ? `&content_type=${contentTypeFilter}` : '';
       const response = await fetch(
-        `${API_ENDPOINTS.moderation}/admin/review-queue?status=${statusFilter}&limit=50`,
+        `${API_ENDPOINTS.moderation}/admin/review-queue?status=${statusFilter}${contentTypeParam}&limit=50`,
         {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         }
@@ -139,26 +188,42 @@ export default function AdminModerationPanel() {
     }
   };
 
-  const handleReview = async (logId: number, decision: 'approved' | 'rejected') => {
+  const handleReview = async (item: ModerationItem, decision: 'approved' | 'rejected') => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(
-        `${API_ENDPOINTS.moderation}/admin/review`,
-        {
+      let response;
+      
+      // 🔴 关键：根据内容类型使用不同的审核 API
+      if (item.content_type === 'profile') {
+        // 用户资料审核使用专用 API（会处理 display_ 字段）
+        const endpoint = decision === 'approved' 
+          ? `${API_ENDPOINTS.users}/admin/approve/${item.content_id}?log_id=${item.id}`
+          : `${API_ENDPOINTS.users}/admin/reject/${item.content_id}?log_id=${item.id}&note=${encodeURIComponent(reviewNote)}`;
+        
+        response = await fetch(endpoint, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            log_id: logId,
-            decision,
-            note: reviewNote
-          })
-        }
-      );
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+      } else {
+        // 商品审核使用通用 API
+        response = await fetch(
+          `${API_ENDPOINTS.moderation}/admin/review`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              log_id: item.id,
+              decision,
+              note: reviewNote
+            })
+          }
+        );
+      }
 
       if (response.ok) {
         toast.success(decision === 'approved' ? '已通过' : '已拒绝');
@@ -218,6 +283,43 @@ export default function AdminModerationPanel() {
       item.content_id?.toLowerCase().includes(query)
     );
   });
+
+  // 无权限提示
+  if (isAdmin === false) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="w-20 h-20 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Shield className="w-10 h-10 text-red-600 dark:text-red-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            无权限访问
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-6">
+            内容审核功能仅限管理员使用
+          </p>
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+          >
+            返回首页
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // 加载中
+  if (isAdmin === null) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
+          <span className="text-gray-500 dark:text-gray-400">检查权限中...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -286,6 +388,28 @@ export default function AdminModerationPanel() {
                 }`}
               >
                 <tab.icon className="w-3.5 h-3.5" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Content Type Tabs */}
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <span className="text-sm text-gray-400">类型:</span>
+            {[
+              { id: 'all', label: '全部' },
+              { id: 'item', label: '商品' },
+              { id: 'profile', label: '用户资料' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setContentTypeFilter(tab.id as any)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                  contentTypeFilter === tab.id
+                    ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
                 {tab.label}
               </button>
             ))}
@@ -415,14 +539,14 @@ export default function AdminModerationPanel() {
                       />
                       <div className="flex gap-3">
                         <button
-                          onClick={() => handleReview(item.id, 'approved')}
+                          onClick={() => handleReview(item, 'approved')}
                           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-colors"
                         >
                           <CheckCircle className="w-5 h-5" />
                           通过
                         </button>
                         <button
-                          onClick={() => handleReview(item.id, 'rejected')}
+                          onClick={() => handleReview(item, 'rejected')}
                           className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors"
                         >
                           <XCircle className="w-5 h-5" />

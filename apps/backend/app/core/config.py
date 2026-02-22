@@ -5,6 +5,7 @@ from typing import Optional
 class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_KEY: str
+    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None  # 用于管理员操作
     DATABASE_URL: str
     OPENAI_API_KEY: Optional[str] = None  # 可选，用于内容审核
 

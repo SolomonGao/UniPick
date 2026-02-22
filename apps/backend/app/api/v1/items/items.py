@@ -8,7 +8,7 @@ from typing import List, Optional
 import logging
 
 from app.core.database import get_db
-from app.core.permissions import require_auth, require_item_owner
+from app.core.permissions import require_auth, require_item_owner, is_admin_user
 from app.models.item import Item, Favorite
 from app.schemas.item import ItemCreate, ItemResponse
 from app.schemas.errors import ErrorResponse, ValidationErrorResponse, NotFoundErrorResponse
@@ -245,8 +245,16 @@ async def list_items(
         if category:
             query = query.where(Item.category == category)
         
-        # 🔴 关键修复：只显示审核通过的商品，但用户自己可以看到自己的待审核商品
-        if user_id and str(user_id) == str(current_user_id):
+        # 🔴 关键修复：检查用户是否为管理员
+        is_admin = False
+        if current_user_id:
+            is_admin = await is_admin_user(current_user_id, db)
+        
+        # 🔴 关键修复：只显示审核通过的商品，但用户自己可以看到自己的待审核商品，管理员可以看到所有
+        if is_admin:
+            # 管理员：可以看到所有状态的商品
+            pass
+        elif user_id and str(user_id) == str(current_user_id):
             # 查看自己的商品：可以看到所有状态
             pass
         else:
@@ -367,7 +375,12 @@ async def get_item(
     db: AsyncSession = Depends(get_db),
     current_user_id: Optional[str] = Depends(get_current_user_id_optional)
 ):
-    """获取单个商品详情"""
+    """获取单个商品详情
+    
+    权限规则：
+    - 审核通过的商品：所有人可见
+    - 待审核/被拒绝的商品：仅所有者和管理员可见
+    """
     try:
         query = select(Item).where(Item.id == item_id)
         result = await db.execute(query)
@@ -376,9 +389,14 @@ async def get_item(
         if not item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="商品不存在")
         
-        # 🔴 关键修复：审核未通过的商品，非所有者无法查看
+        # 🔴 关键修复：检查用户是否为管理员
         is_owner = str(item.user_id) == str(current_user_id) if current_user_id else False
-        if item.moderation_status != 'approved' and not is_owner:
+        is_admin = False
+        if current_user_id:
+            is_admin = await is_admin_user(current_user_id, db)
+        
+        # 🔴 关键修复：审核未通过的商品，仅所有者和管理员可见
+        if item.moderation_status != 'approved' and not is_owner and not is_admin:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="商品不存在或审核中")
         
         # 修复1：同上，严格处理位置保密，对经纬度进行数学打码
@@ -435,8 +453,12 @@ async def update_item(
     item_update: ItemCreate = Body(...),
     item: Item = Depends(require_item_owner),
     db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id)
 ):
-    """更新商品信息（只有商品所有者可以更新）"""
+    """更新商品信息（只有商品所有者可以更新）
+    
+    注意：任何修改都会重新进入审核流程
+    """
     try:
         # 验证分类
         if item_update.category and item_update.category not in VALID_CATEGORIES:
@@ -455,12 +477,30 @@ async def update_item(
         item.images = item_update.images
         item.is_location_private = item_update.is_location_private
         
+        # 🔴 关键：任何修改都重置为待审核状态
+        item.moderation_status = 'pending'
+        item.moderation_log_id = None
+        logger.info(f"商品 {item_id} 被修改，重新进入审核流程")
+        
         # 更新地理位置
         if item_update.latitude and item_update.longitude:
             item.location = f"POINT({item_update.longitude} {item_update.latitude})"
         
         await db.commit()
         await db.refresh(item)
+        
+        # 🔴 关键：触发重新审核
+        try:
+            moderation_result = await moderate_item(
+                db=db,
+                item_id=str(item.id),
+                user_id=str(user_id),
+                title=item_update.title,
+                description=item_update.description or ""
+            )
+            logger.info(f"商品 {item.id} 修改后审核完成: {moderation_result.status}")
+        except Exception as e:
+            logger.error(f"商品 {item.id} 修改后审核失败: {e}")
         
         logger.info(f"用户 {item.user_id} 更新了商品: {item_id}")
         return item

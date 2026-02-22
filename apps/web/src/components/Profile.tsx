@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { User, Package, Heart, Eye, Mail, Calendar, MapPin, Loader2, Settings, LogOut, Building, Phone } from 'lucide-react';
+import { User, Package, Heart, Eye, Mail, Calendar, MapPin, Loader2, Settings, LogOut, Building, Phone, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { useAuth } from '../components/AuthGuard';
 import { useUserFavorites, useUserViewHistory } from '../hooks/useItemStats';
 import { supabase } from '../lib/supabase';
 import { API_ENDPOINTS } from '../lib/constants';
+import { toast } from 'sonner';
 import UserSettingsModal from './UserSettingsModal';
 
 interface UserProfile {
@@ -20,6 +21,8 @@ interface UserProfile {
   location?: string;
   notification_email?: boolean;
   show_phone?: boolean;
+  moderation_status?: 'pending' | 'approved' | 'flagged' | 'rejected';
+  moderation_log_id?: number;
 }
 
 interface Item {
@@ -98,6 +101,8 @@ export default function Profile() {
         university: (data as any)?.university || '',
         notification_email: (data as any)?.notification_email ?? true,
         show_phone: (data as any)?.show_phone ?? false,
+        moderation_status: (data as any)?.moderation_status || 'approved',
+        moderation_log_id: (data as any)?.moderation_log_id,
       });
     } catch (error) {
       console.error('加载用户资料失败:', error);
@@ -108,6 +113,7 @@ export default function Profile() {
         created_at: user.created_at || new Date().toISOString(),
         notification_email: true,
         show_phone: false,
+        moderation_status: 'approved',
       });
     }
   };
@@ -170,15 +176,44 @@ export default function Profile() {
             </div>
             
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                {profile?.full_name || profile?.username || '用户'}
-              </h1>
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {profile?.full_name || profile?.username || '用户'}
+                </h1>
+                
+                {/* 🔴 用户资料审核状态 */}
+                {profile?.moderation_status && profile.moderation_status !== 'approved' && (
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full ${
+                    profile.moderation_status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      : profile.moderation_status === 'flagged'
+                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                  }`}>
+                    {profile.moderation_status === 'pending' && <><AlertCircle className="w-3 h-3" /> 审核中</>}
+                    {profile.moderation_status === 'flagged' && <><AlertCircle className="w-3 h-3" /> 待审核</>}
+                    {profile.moderation_status === 'rejected' && <><XCircle className="w-3 h-3" /> 已拒绝</>}
+                  </span>
+                )}
+              </div>
               
               {/* 简介 */}
               {profile?.bio && (
                 <p className="text-gray-600 dark:text-gray-300 mb-2 max-w-md">
                   {profile.bio}
                 </p>
+              )}
+              
+              {/* 🔴 被拒绝时的提示（后端已自动回滚，所以显示 approved 状态） */}
+              {profile?.moderation_status === 'rejected' && (
+                <div className="mb-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                    <strong>⚠️ 之前的修改未通过审核</strong>
+                  </p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                    已自动恢复为审核通过的版本。如需修改，请重新编辑资料。
+                  </p>
+                </div>
               )}
               
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">

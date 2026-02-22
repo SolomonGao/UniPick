@@ -41,6 +41,7 @@ export default function SellItemForm() {
   const [loading, setLoading] = useState(false);
   const [itemId, setItemId] = useState<number | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isRejected, setIsRejected] = useState(false);
 
   const form = useForm<ItemFormInputs>({
     resolver: zodResolver(itemSchema),
@@ -98,6 +99,11 @@ export default function SellItemForm() {
       setValue('location_name', item.location_name);
       setValue('latitude', item.latitude);
       setValue('longitude', item.longitude);
+      
+      // 检查商品是否被拒绝
+      if (item.moderation_status === 'rejected') {
+        setIsRejected(true);
+      }
       
       if (item.images && item.images.length > 0) {
         setExistingImages(item.images);
@@ -282,6 +288,26 @@ export default function SellItemForm() {
           <span className="inline-block mt-3 px-4 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-full">
             编辑模式
           </span>
+        )}
+        {isEditMode && (
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>ℹ️ 修改后将重新审核</strong>
+            </p>
+            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+              编辑商品后，商品将重新进入审核流程，审核通过后才能再次显示在列表中。
+            </p>
+          </div>
+        )}
+        {isRejected && (
+          <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              <strong>⚠️ 该商品曾被拒绝</strong>
+            </p>
+            <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+              修改后商品将重新进入审核流程，审核通过后才能再次显示在列表中。
+            </p>
+          </div>
         )}
       </div>
 

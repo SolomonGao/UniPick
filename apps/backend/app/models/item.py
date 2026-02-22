@@ -37,8 +37,9 @@ class Item(Base):
     moderation_status = Column(String, default='pending', server_default=text("'pending'"))
     moderation_log_id = Column(Integer, nullable=True)
     
-    # 创建时间
+    # 时间戳
     created_at = Column(DateTime, default=datetime.utcnow, server_default=text('NOW()'))
+    updated_at = Column(DateTime, default=datetime.utcnow, server_default=text('NOW()'), onupdate=datetime.utcnow)
     
     # 关系
     favorites = relationship("Favorite", back_populates="item", cascade="all, delete-orphan")
