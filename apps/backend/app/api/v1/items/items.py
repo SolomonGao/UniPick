@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, status, Body, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func, distinct
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -9,6 +9,7 @@ import logging
 
 from app.core.database import get_db
 from app.core.permissions import require_auth, require_item_owner, is_admin_user
+from app.core.rate_limit import limiter, RateLimits
 from app.models.item import Item, Favorite
 from app.schemas.item import ItemCreate, ItemResponse
 from app.schemas.errors import ErrorResponse, ValidationErrorResponse, NotFoundErrorResponse
@@ -87,7 +88,9 @@ def format_distance(distance_km: float) -> str:
         500: {"model": ErrorResponse, "description": "服务器内部错误"},
     }
 )
+@limiter.limit(RateLimits.CREATE_ITEM)  # 🔧 新增：限制发布商品频率
 async def create_item(
+    request: Request,  # 🔧 新增：用于限流
     item_in: ItemCreate,
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id)
@@ -185,7 +188,9 @@ async def create_item(
         500: {"model": ErrorResponse, "description": "服务器内部错误"},
     }
 )
+@limiter.limit(RateLimits.DEFAULT)  # 🔧 新增：通用限流
 async def list_items(
+    request: Request,  # 🔧 新增：用于限流
     db: AsyncSession = Depends(get_db),
     current_user_id: Optional[str] = Depends(get_current_user_id_optional), # 修复：注入当前用户以便判断权限
     skip: int = Query(0, ge=0, description="跳过记录数"),

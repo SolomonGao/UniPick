@@ -3,7 +3,7 @@ import {
   Shield, CheckCircle, XCircle, AlertTriangle, Eye,
   RefreshCw, Search, Filter, ChevronDown, ChevronUp,
   Clock, User, FileText, AlertOctagon, ExternalLink,
-  CheckSquare, Square, BarChart3
+  CheckSquare, Square, BarChart3, MapPin
 } from 'lucide-react';
 import { API_ENDPOINTS } from '../lib/constants';
 import { supabase } from '../lib/supabase';
@@ -25,6 +25,19 @@ interface ModerationItem {
   reviewed_by?: string;
   reviewed_at?: string;
   review_note?: string;
+  // 商品图片和详情（用于人工审核）
+  item_images?: string[];
+  item_title?: string;
+  item_description?: string;
+  item_price?: number;
+  item_location?: string;
+  // 🔧 新增：用户资料信息（用于人工审核）
+  profile_avatar?: string;
+  profile_full_name?: string;
+  profile_username?: string;
+  profile_bio?: string;
+  profile_university?: string;
+  profile_campus?: string;
 }
 
 interface Stats {
@@ -511,6 +524,105 @@ export default function AdminModerationPanel() {
               {/* Expanded Details */}
               {expandedItem === item.id && (
                 <div className="border-t border-gray-100 dark:border-gray-700 p-6 bg-gray-50/50 dark:bg-gray-700/30">
+                  {/* 🔧 新增：商品图片展示（用于人工审核） */}
+                  {item.content_type === 'item' && item.item_images && item.item_images.length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                        <Eye className="w-4 h-4" />
+                        商品图片（人工审核）
+                      </h4>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                        {item.item_images.map((img, idx) => (
+                          <a 
+                            key={idx}
+                            href={img}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="aspect-square rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-600 hover:ring-2 hover:ring-orange-500 transition-all"
+                          >
+                            <img 
+                              src={img} 
+                              alt={`商品图片 ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                      
+                      {/* 商品基本信息 */}
+                      {(item.item_title || item.item_price) && (
+                        <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600">
+                          {item.item_title && (
+                            <p className="font-medium text-gray-900 dark:text-white mb-1">{item.item_title}</p>
+                          )}
+                          {item.item_price !== undefined && (
+                            <p className="text-orange-600 font-bold mb-1">${item.item_price.toFixed(2)}</p>
+                          )}
+                          {item.item_location && (
+                            <p className="text-sm text-gray-500 flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {item.item_location}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* 🔧 新增：用户资料头像展示（用于人工审核） */}
+                  {item.content_type === 'profile' && (
+                    <div className="mb-6">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        用户资料（人工审核）
+                      </h4>
+                      <div className="flex items-start gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600">
+                        {/* 头像 */}
+                        <div className="flex-shrink-0">
+                          {item.profile_avatar ? (
+                            <a 
+                              href={item.profile_avatar}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block w-20 h-20 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-600 hover:ring-2 hover:ring-orange-500 transition-all"
+                            >
+                              <img 
+                                src={item.profile_avatar} 
+                                alt="用户头像"
+                                className="w-full h-full object-cover"
+                              />
+                            </a>
+                          ) : (
+                            <div className="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+                              <User className="w-8 h-8 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* 用户信息 */}
+                        <div className="flex-1 min-w-0">
+                          {item.profile_full_name && (
+                            <p className="font-medium text-gray-900 dark:text-white text-lg">{item.profile_full_name}</p>
+                          )}
+                          {item.profile_username && (
+                            <p className="text-gray-500 text-sm mb-2">@{item.profile_username}</p>
+                          )}
+                          {(item.profile_university || item.profile_campus) && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1 mb-2">
+                              <MapPin className="w-3 h-3" />
+                              {item.profile_university} {item.profile_campus}
+                            </p>
+                          )}
+                          {item.profile_bio && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mt-2">
+                              {item.profile_bio}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Full Risk Scores */}
                   {item.scores && Object.entries(item.scores).filter(([_, s]) => s > 0.01).length > 0 && (
                     <div className="mb-4">

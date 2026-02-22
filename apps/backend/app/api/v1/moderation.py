@@ -2,7 +2,7 @@
 内容审核 API
 提供自动审核和人工审核接口
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 import logging
@@ -10,6 +10,7 @@ import logging
 from app.core.database import get_db
 from app.core.permissions import require_auth, require_admin, is_admin_user
 from app.core.security import get_current_user_id
+from app.core.rate_limit import limiter, RateLimits
 from app.services.moderation import ModerationService
 from app.schemas.errors import ErrorResponse
 
@@ -108,7 +109,9 @@ async def moderate_profile(
         403: {"model": ErrorResponse, "description": "无权限"},
     }
 )
+@limiter.limit(RateLimits.DEFAULT)  # 🔧 新增：限流
 async def get_review_queue(
+    request: Request,  # 🔧 新增：用于限流
     status: str = Query('flagged', enum=['flagged', 'pending', 'rejected']),
     content_type: Optional[str] = Query(None, enum=['item', 'profile'], description="按内容类型筛选"),
     limit: int = Query(50, ge=1, le=100),
@@ -133,7 +136,9 @@ async def get_review_queue(
         403: {"model": ErrorResponse, "description": "无权限"},
     }
 )
+@limiter.limit(RateLimits.DEFAULT)  # 🔧 新增：限流
 async def manual_review(
+    request: Request,  # 🔧 新增：用于限流
     review: ModerationReviewRequest,
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(require_admin)

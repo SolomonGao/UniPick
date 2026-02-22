@@ -211,18 +211,30 @@ class ModerationService:
         status: str,
         log_id: int
     ):
-        """更新内容表的审核状态"""
-        if content_type == 'item':
-            table = 'items'
-            # item id 是整数
-            id_value = int(content_id)
-        elif content_type == 'profile':
-            table = 'profiles'
-            # profile id 是 UUID 字符串
-            id_value = content_id
-        else:
-            return
+        """更新内容表的审核状态
         
+        🔧 修复：添加表名白名单验证，防止 SQL 注入
+        """
+        # 表名白名单验证
+        VALID_TABLES = {
+            'item': {'table': 'items', 'id_type': 'int'},
+            'profile': {'table': 'profiles', 'id_type': 'uuid'}
+        }
+        
+        if content_type not in VALID_TABLES:
+            logger.error(f"Invalid content_type for moderation update: {content_type}")
+            raise ValueError(f"Invalid content_type: {content_type}")
+        
+        table_config = VALID_TABLES[content_type]
+        table = table_config['table']
+        
+        # 根据类型转换 ID
+        if table_config['id_type'] == 'int':
+            id_value = int(content_id)
+        else:
+            id_value = content_id
+        
+        # 使用参数化查询（表名已通过白名单验证）
         await db.execute(
             text(f"""
                 UPDATE {table} 
@@ -234,6 +246,7 @@ class ModerationService:
             {'status': status, 'log_id': log_id, 'content_id': id_value}
         )
         await db.commit()
+        logger.info(f"Updated moderation status for {content_type} {content_id} -> {status}")
     
     @staticmethod
     async def get_pending_review(
@@ -243,7 +256,11 @@ class ModerationService:
         offset: int = 0,
         content_type: str = None
     ) -> list:
-        """获取待人工审核的内容"""
+        """获取待人工审核的内容
+        
+        🔧 修复：对于商品(item)类型，同时获取商品图片用于人工审核
+        """
+        # 基础查询 moderation_logs
         query = """
             SELECT 
                 m.*,
@@ -261,9 +278,58 @@ class ModerationService:
         query += " ORDER BY m.created_at DESC LIMIT :limit OFFSET :offset"
         
         result = await db.execute(text(query), params)
-        
         rows = result.mappings().all()
-        return [dict(row) for row in rows]
+        items = [dict(row) for row in rows]
+        
+        # 🔧 修复：获取内容详情用于人工审核
+        for item in items:
+            try:
+                if item.get('content_type') == 'item':
+                    # 商品类型：获取图片信息
+                    item_id = int(item['content_id'])
+                    img_result = await db.execute(
+                        text("""
+                            SELECT images, title, description, price, location_name
+                            FROM items 
+                            WHERE id = :item_id
+                        """),
+                        {'item_id': item_id}
+                    )
+                    item_data = img_result.mappings().one_or_none()
+                    if item_data:
+                        item['item_images'] = item_data['images'] or []
+                        item['item_title'] = item_data['title']
+                        item['item_description'] = item_data['description']
+                        item['item_price'] = float(item_data['price']) if item_data['price'] else 0
+                        item['item_location'] = item_data['location_name']
+                        
+                elif item.get('content_type') == 'profile':
+                    # 🔧 新增：用户资料类型：获取头像和其他信息
+                    profile_result = await db.execute(
+                        text("""
+                            SELECT avatar_url, full_name, username, bio, university, campus
+                            FROM profiles 
+                            WHERE id = :user_id
+                        """),
+                        {'user_id': item['user_id']}
+                    )
+                    profile_data = profile_result.mappings().one_or_none()
+                    if profile_data:
+                        item['profile_avatar'] = profile_data['avatar_url']
+                        item['profile_full_name'] = profile_data['full_name']
+                        item['profile_username'] = profile_data['username']
+                        item['profile_bio'] = profile_data['bio']
+                        item['profile_university'] = profile_data['university']
+                        item['profile_campus'] = profile_data['campus']
+                        
+            except Exception as e:
+                logger.error(f"Error fetching content details for moderation: {e}")
+                if item.get('content_type') == 'item':
+                    item['item_images'] = []
+                elif item.get('content_type') == 'profile':
+                    item['profile_avatar'] = None
+        
+        return items
     
     @staticmethod
     async def manual_review(

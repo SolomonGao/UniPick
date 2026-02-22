@@ -76,23 +76,15 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
   const [stats, setStats] = useState<ItemStats>({ view_count: 0, favorite_count: 0, is_favorited: false });
   const [isImageLoading, setIsImageLoading] = useState(true);
   const [sellerProfile, setSellerProfile] = useState<SellerProfile | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  // 🔧 修复：移除前端硬编码的管理员检查，权限控制应由后端处理
+  // 管理员功能应通过专门的审核面板访问
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setCurrentUserId(session?.user?.id ?? null);
       
-      // 检查是否为管理员
-      if (session) {
-        fetch(`${API_ENDPOINTS.items.replace('/api/v1/items', '/api/v1/users')}/me`, {
-          headers: { 'Authorization': `Bearer ${session.access_token}` }
-        })
-        .then(res => res.json())
-        .then(profile => {
-          setIsAdmin(profile.is_admin || false);
-        })
-        .catch(() => setIsAdmin(false));
-      }
+      // 🔧 移除：前端不应该判断管理员权限
+      // 后端应控制返回哪些数据，前端只根据返回的数据展示
     });
     
     const urlParams = new URLSearchParams(window.location.search);
@@ -381,8 +373,8 @@ function ItemDetailContent({ itemId }: ItemDetailProps) {
                   {item.category}
                 </span>
               )}
-              {/* 审核状态标签 - 仅所有者和管理员可见 */}
-              {(isOwner || isAdmin) && item.moderation_status && item.moderation_status !== 'approved' && (
+              {/* 审核状态标签 - 仅所有者可查看自己的待审核/拒绝商品 */}
+              {isOwner && item.moderation_status && item.moderation_status !== 'approved' && (
                 <span className={`inline-flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-full ${
                   item.moderation_status === 'pending'
                     ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'

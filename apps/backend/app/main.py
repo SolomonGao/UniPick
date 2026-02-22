@@ -4,12 +4,16 @@ from app.api.v1.items import items, favorites
 from app.api.v1.users import profile as user_profile
 from app.api.v1 import moderation
 from app.core.database import get_db
+from app.core.rate_limit import limiter, setup_rate_limiting
 from sqlalchemy import text
 
 from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI(title="UniPick API", description="API for UniPick application")
+
+# 🔧 修复：添加 API 限流
+setup_rate_limiting(app)
 
 origins = [
     "http://localhost:4321",
