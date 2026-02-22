@@ -281,10 +281,11 @@ class ModerationService:
         rows = result.mappings().all()
         items = [dict(row) for row in rows]
         
-        # 🔧 修复：对于商品类型，获取图片信息用于人工审核
+        # 🔧 修复：获取内容详情用于人工审核
         for item in items:
-            if item.get('content_type') == 'item':
-                try:
+            try:
+                if item.get('content_type') == 'item':
+                    # 商品类型：获取图片信息
                     item_id = int(item['content_id'])
                     img_result = await db.execute(
                         text("""
@@ -301,9 +302,32 @@ class ModerationService:
                         item['item_description'] = item_data['description']
                         item['item_price'] = float(item_data['price']) if item_data['price'] else 0
                         item['item_location'] = item_data['location_name']
-                except Exception as e:
-                    logger.error(f"Error fetching item details for moderation: {e}")
+                        
+                elif item.get('content_type') == 'profile':
+                    # 🔧 新增：用户资料类型：获取头像和其他信息
+                    profile_result = await db.execute(
+                        text("""
+                            SELECT avatar_url, full_name, username, bio, university, campus
+                            FROM profiles 
+                            WHERE id = :user_id
+                        """),
+                        {'user_id': item['user_id']}
+                    )
+                    profile_data = profile_result.mappings().one_or_none()
+                    if profile_data:
+                        item['profile_avatar'] = profile_data['avatar_url']
+                        item['profile_full_name'] = profile_data['full_name']
+                        item['profile_username'] = profile_data['username']
+                        item['profile_bio'] = profile_data['bio']
+                        item['profile_university'] = profile_data['university']
+                        item['profile_campus'] = profile_data['campus']
+                        
+            except Exception as e:
+                logger.error(f"Error fetching content details for moderation: {e}")
+                if item.get('content_type') == 'item':
                     item['item_images'] = []
+                elif item.get('content_type') == 'profile':
+                    item['profile_avatar'] = None
         
         return items
     
