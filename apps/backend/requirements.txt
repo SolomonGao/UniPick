@@ -1,0 +1,5 @@
+# UniPick Backend Dependencies
+# 核心依赖在系统环境中管理，这里只记录额外依赖
+
+# Telegram Bot API（可选，用于收藏通知）
+python-telegram-bot>=20.0
