@@ -123,18 +123,51 @@ export default function SellItemForm() {
     setValue('is_location_private', isPrivate || false);
   };
 
-  // 处理图片拖拽
+  // 处理图片拖拽 - 添加文件验证
   const { getRootProps, getInputProps } = useDropzone({
-    accept: { 'image/*': [] },
+    accept: { 
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp']
+    },
     maxFiles: 4,
-    onDrop: (acceptedFiles) => {
-      const totalImages = existingImages.length + images.length + acceptedFiles.length;
+    maxSize: 5 * 1024 * 1024, // 🔧 新增: 限制单个文件 5MB
+    onDrop: (acceptedFiles, rejectedFiles) => {
+      // 🔧 新增: 处理被拒绝的文件
+      if (rejectedFiles.length > 0) {
+        rejectedFiles.forEach((rejected) => {
+          const error = rejected.errors[0];
+          if (error.code === 'file-too-large') {
+            toast.error(`图片 ${rejected.file.name} 超过 5MB 限制`);
+          } else if (error.code === 'file-invalid-type') {
+            toast.error(`图片 ${rejected.file.name} 格式不支持 (仅支持 jpg/png/gif/webp)`);
+          } else {
+            toast.error(`图片 ${rejected.file.name} 上传失败: ${error.message}`);
+          }
+        });
+      }
+      
+      // 🔧 新增: 验证文件类型 (后端额外验证)
+      const validFiles = acceptedFiles.filter(file => {
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+          toast.error(`不支持的图片格式: ${file.name}`);
+          return false;
+        }
+        return true;
+      });
+      
+      const totalImages = existingImages.length + images.length + validFiles.length;
       if (totalImages > 4) {
         toast.error('最多只能上传4张图片');
         return;
       }
-      setImages((prev) => [...prev, ...acceptedFiles].slice(0, 4 - existingImages.length));
+      setImages((prev) => [...prev, ...validFiles].slice(0, 4 - existingImages.length));
     },
+    onDropRejected: (rejectedFiles) => {
+      // 🔧 新增: 总体错误处理
+      if (rejectedFiles.length > 0) {
+        console.error('Files rejected:', rejectedFiles);
+      }
+    }
   });
 
   const removeNewImage = (index: number) => {

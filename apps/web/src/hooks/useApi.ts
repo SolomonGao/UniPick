@@ -162,11 +162,20 @@ interface ItemDetail {
   id: number;
   title: string;
   price: number;
+  original_price?: number | null;
   description: string;
   images: string[];
   location_name: string;
+  latitude: number;
+  longitude: number;
   user_id: string;
   created_at: string;
+  category?: string;
+  is_location_private?: boolean;
+  location_fuzzy?: string | null;
+  view_count?: number;
+  favorite_count?: number;
+  moderation_status?: 'pending' | 'approved' | 'flagged' | 'rejected';
 }
 
 export function useItemDetail(itemId: number) {

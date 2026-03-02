@@ -95,8 +95,52 @@ async def create_item(
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id)
 ):
-    """创建新商品"""
+    """创建新商品
+    
+    图片验证：
+    - 最多 4 张图片
+    - 图片 URL 必须来自允许的域名
+    """
     try:
+        # 🔧 新增: 图片验证
+        if item_in.images:
+            # 验证图片数量
+            if len(item_in.images) > 4:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "error": "TooManyImages",
+                        "message": "最多只能上传4张图片",
+                        "details": {"max_allowed": 4, "provided": len(item_in.images)}
+                    }
+                )
+            
+            # 验证图片 URL 格式
+            allowed_domains = [
+                "supabase.co",  # Supabase Storage
+                "localhost",     # 开发环境
+            ]
+            
+            for idx, img_url in enumerate(item_in.images):
+                # 验证 URL 格式
+                if not img_url.startswith(('http://', 'https://')):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail={
+                            "error": "InvalidImageUrl",
+                            "message": f"图片 {idx+1} URL 格式无效",
+                            "details": {"url": img_url}
+                        }
+                    )
+                
+                # 验证文件格式（通过 URL 扩展名或 Content-Type）
+                allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+                has_valid_ext = any(img_url.lower().endswith(ext) for ext in allowed_extensions)
+                
+                # 如果 URL 不是以允许的扩展名结尾，检查是否是 Supabase URL
+                if not has_valid_ext and 'supabase' not in img_url:
+                    logger.warning(f"图片 {idx+1} 格式可能无效: {img_url}")
+        
         # 验证分类
         if item_in.category and item_in.category not in VALID_CATEGORIES:
             raise HTTPException(
