@@ -9,6 +9,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     OPENAI_API_KEY: Optional[str] = None  # 可选，用于内容审核
     TELEGRAM_BOT_TOKEN: Optional[str] = None  # 🔧 新增：Telegram Bot Token
+    
+    # 🔧 新增：调试模式
+    DEBUG: bool = False  # 生产环境设为 False
+    ENV: str = "development"  # development / staging / production
 
     class Config:
             # 告诉 Pydantic 去哪里找文件
