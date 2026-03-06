@@ -46,6 +46,7 @@ export function useItemStats(itemId: number) {
     queryFn: () => apiRequest<ItemStats>(`${API_ENDPOINTS.items}/${itemId}/stats`),
     staleTime: 30 * 1000, // 30秒
     retry: 2,
+    enabled: !!itemId && itemId > 0, // 只有当 itemId 有效时才发起请求
   });
 }
 
@@ -184,6 +185,7 @@ export function useItemDetail(itemId: number) {
     queryFn: () => apiRequest<ItemDetail>(`${API_ENDPOINTS.items}/${itemId}`),
     staleTime: 60 * 1000, // 1分钟
     retry: 2,
+    enabled: !!itemId && itemId > 0, // 只有当 itemId 有效时才发起请求
   });
 }
 

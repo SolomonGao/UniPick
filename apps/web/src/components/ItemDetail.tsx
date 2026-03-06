@@ -23,6 +23,7 @@ interface ItemDetailProps {
 
 export default function ItemDetail({ itemId: itemIdProp }: ItemDetailProps) {
   const itemId = parseInt(itemIdProp || '0');
+  const isValidItemId = !isNaN(itemId) && itemId > 0;
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -61,6 +62,27 @@ export default function ItemDetail({ itemId: itemIdProp }: ItemDetailProps) {
     }
     toggleFavorite.mutate();
   };
+
+  // 🔧 处理无效的商品 ID
+  if (!isValidItemId) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
+        <div className="w-20 h-20 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center mb-4">
+          <Flag className="w-10 h-10 text-red-500" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+          无效的商品链接
+        </h2>
+        <p className="text-gray-500 dark:text-gray-400 mb-6">
+          商品ID格式不正确，请检查链接是否完整
+        </p>
+        <a href="/" className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium rounded-xl">
+          <ArrowLeft className="w-4 h-4" />
+          返回首页
+        </a>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
