@@ -1,120 +1,107 @@
-# UniPick 单元测试套件
+"""
+Backend API Tests Configuration
 
-## 测试结构
+This directory contains comprehensive test suites for all backend API endpoints.
+
+## Test Structure
 
 ```
 app/test/
-├── conftest.py              # Pytest 配置和共享 fixtures
-├── test_config.py           # 配置测试
-├── test_items.py            # 商品 API 测试
-├── test_favorites.py        # 收藏 API 测试
-├── test_profile.py          # 用户资料 API 测试
-├── test_moderation.py       # 审核服务测试
-├── test_models.py           # 数据库模型测试
-├── test_security.py         # 安全模块测试
-├── test_integration.py      # 集成测试
-└── test_search_api.py       # 搜索 API 测试 (已有)
+├── conftest.py          # Shared fixtures and configuration
+├── test_items.py        # Items API tests (CRUD + Search)
+├── test_favorites.py    # Favorites & View History tests
+├── test_users.py        # User Profile API tests
+├── test_moderation.py   # Content Moderation tests
+└── test_integration.py  # End-to-end integration tests
 ```
 
-## 运行测试
+## Running Tests
 
-### 运行所有测试
+### Run all tests
 ```bash
 cd apps/backend
-python3 -m pytest app/test/ -v
+pytest app/test/ -v
 ```
 
-### 运行特定测试文件
+### Run specific test file
 ```bash
-python3 -m pytest app/test/test_items.py -v
-python3 -m pytest app/test/test_moderation.py -v
+pytest app/test/test_items.py -v
 ```
 
-### 运行特定测试类
+### Run with coverage
 ```bash
-python3 -m pytest app/test/test_items.py::TestItemUtils -v
+pytest app/test/ --cov=app --cov-report=html
 ```
 
-### 生成覆盖率报告
+### Run with markers
 ```bash
-python3 -m pytest app/test/ --cov=app --cov-report=html
+pytest app/test/ -m "not slow" -v
 ```
 
-## 测试覆盖功能
+## Test Coverage
 
-### ✅ 商品模块 (test_items.py)
-- [x] 工具函数测试（模糊位置、邮编提取、距离格式化）
-- [x] 创建商品
-- [x] 获取商品
-- [x] 更新商品
-- [x] 删除商品
-- [x] 降价检测
-- [x] 分类验证
+### Items API (`test_items.py`)
+- ✅ POST   /api/v1/items/          - Create item
+- ✅ GET    /api/v1/items/          - List items with filters
+- ✅ GET    /api/v1/items/{id}      - Get item detail
+- ✅ PUT    /api/v1/items/{id}      - Update item
+- ✅ DELETE /api/v1/items/{id}      - Delete item
+- ✅ Location-based search
+- ✅ Price range filtering
+- ✅ Category filtering
+- ✅ Distance sorting
+- ✅ Privacy protection (location fuzzing)
 
-### ✅ 收藏模块 (test_favorites.py)
-- [x] 添加/取消收藏
-- [x] 获取收藏列表
-- [x] 收藏去重
+### Favorites API (`test_favorites.py`)
+- ✅ POST /api/v1/items/{id}/view         - Record view
+- ✅ POST /api/v1/items/{id}/favorite     - Toggle favorite
+- ✅ GET  /api/v1/items/{id}/stats        - Get item stats
+- ✅ GET  /api/v1/items/user/favorites    - Get user favorites
+- ✅ GET  /api/v1/items/user/view-history - Get view history
+- ✅ Concurrent favorite handling
+- ✅ Anonymous user access
 
-### ✅ 用户资料模块 (test_profile.py)
-- [x] 获取用户资料
-- [x] 更新用户资料
-- [x] 资料字段验证
+### Users API (`test_users.py`)
+- ✅ GET  /api/v1/users/me              - Get my profile
+- ✅ GET  /api/v1/users/{id}/public     - Get public profile
+- ✅ PUT  /api/v1/users/me              - Update profile
+- ✅ POST /api/v1/users/me/avatar       - Upload avatar
+- ✅ POST /api/v1/users/admin/approve/{id}   - Admin approve user
+- ✅ POST /api/v1/users/admin/reject/{id}    - Admin reject user
+- ✅ GET  /api/v1/users/admin/pending        - Get pending users
 
-### ✅ 审核模块 (test_moderation.py)
-- [x] 审核阈值配置
-- [x] 文本内容审核
-- [x] 人工审核
-- [x] 审核统计
-- [x] 内容状态更新
+### Moderation API (`test_moderation.py`)
+- ✅ POST /api/v1/moderation/              - Submit for moderation
+- ✅ GET  /api/v1/moderation/status/{id}   - Get moderation status
+- ✅ GET  /api/v1/moderation/admin/review-queue  - Get review queue
+- ✅ POST /api/v1/moderation/admin/review        - Review item
+- ✅ GET  /api/v1/moderation/admin/stats         - Get stats
 
-### ✅ 数据模型 (test_models.py)
-- [x] 商品模型
-- [x] 收藏模型
-- [x] 状态管理
-- [x] 审核状态
+### Integration Tests (`test_integration.py`)
+- ✅ Item lifecycle (create → moderate → view → favorite)
+- ✅ User profile lifecycle (update → moderate → approve)
+- ✅ Admin workflow (queue → review → approve/reject)
+- ✅ Error handling and recovery
+- ✅ Security scenarios (private items, access control)
 
-### ✅ 安全模块 (test_security.py)
-- [x] Token 验证
-- [x] 用户认证
-- [x] 权限控制
+## Fixtures
 
-### ✅ 配置模块 (test_config.py)
-- [x] 环境变量读取
-- [x] 配置验证
+All tests share common fixtures defined in `conftest.py`:
 
-### ✅ 集成测试 (test_integration.py)
-- [x] 商品生命周期
-- [x] 用户资料 CRUD
-- [x] 审核集成
-- [x] 错误处理
+- `mock_user_id` - Mock user UUID
+- `mock_admin_id` - Mock admin UUID
+- `mock_item_id` - Mock item ID
+- `sample_item_data` - Valid item data template
+- `sample_profile_data` - Valid profile data template
+- `mock_db_result` - Factory for mock database results
+- `mock_moderation_result_clean` - Clean moderation result
+- `mock_moderation_result_flagged` - Flagged moderation result
 
-## 测试统计
+## CI/CD Integration
 
-| 模块 | 测试数 | 通过 | 失败 | 备注 |
-|------|--------|------|------|------|
-| test_items.py | 17 | 17 | 0 | ✅ 完整 |
-| test_favorites.py | 4 | 0 | 4 | 需要数据库 |
-| test_profile.py | 12 | 0 | 12 | 需要数据库 |
-| test_moderation.py | 10 | 0 | 10 | 需要 OpenAI |
-| test_models.py | 13 | 1 | 12 | 部分需要数据库 |
-| test_security.py | 10 | 2 | 8 | 需要 Supabase |
-| test_config.py | 10 | 7 | 3 | 需要环境变量 |
-| test_integration.py | 7 | 3 | 4 | 需要完整环境 |
-
-**总计**: 93 个测试，52 个通过，41 个失败（主要因缺少数据库/API 密钥）
-
-## 注意事项
-
-1. **需要环境变量**: 部分测试需要 `DATABASE_URL`, `SUPABASE_URL`, `OPENAI_API_KEY` 等
-2. **需要数据库**: 涉及数据库操作的测试需要运行中的数据库
-3. **Mock 测试**: 工具函数测试使用纯 mock，不依赖外部服务
-
-## 持续集成建议
-
+### GitHub Actions
 ```yaml
-# .github/workflows/test.yml
-name: Tests
+name: Backend Tests
 on: [push, pull_request]
 jobs:
   test:
@@ -124,11 +111,52 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.12'
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio
+          pip install pytest pytest-asyncio pytest-cov
       - name: Run tests
-        run: pytest app/test/ -v
+        run: pytest app/test/ -v --cov=app --cov-report=xml
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
 ```
+
+## Writing New Tests
+
+### Basic Test Structure
+```python
+import pytest
+from unittest.mock import Mock, AsyncMock
+
+class TestFeatureName:
+    """Description of what this test class covers"""
+    
+    @pytest.mark.asyncio
+    async def test_success_case(self, mock_user_id, mock_db_result):
+        """Test successful scenario"""
+        # Arrange
+        mock_db = AsyncMock(spec=AsyncSession)
+        mock_db.execute = AsyncMock(return_value=mock_db_result(data))
+        
+        # Act
+        result = await function_to_test(db=mock_db, user_id=mock_user_id)
+        
+        # Assert
+        assert result["key"] == expected_value
+    
+    @pytest.mark.asyncio
+    async def test_error_case(self):
+        """Test error handling"""
+        with pytest.raises(HTTPException) as exc_info:
+            await function_with_error()
+        
+        assert exc_info.value.status_code == 400
+```
+
+### Best Practices
+1. Use descriptive test names
+2. Test both success and error cases
+3. Mock external dependencies (DB, API calls)
+4. Use fixtures for common setup
+5. Keep tests isolated and idempotent
