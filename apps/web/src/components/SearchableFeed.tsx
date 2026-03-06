@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback, memo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
-import { MapPin, ArrowUpRight } from 'lucide-react';
+import { MapPin, ArrowUpRight, Navigation } from 'lucide-react';
 import { API_ENDPOINTS } from '../lib/constants';
-import { getUserLocation, saveUserLocation } from '../lib/geo';
+import { saveUserLocation } from '../lib/geo';
 import { supabase } from '../lib/supabase';
+import { useDebounce } from '../hooks/useDebounce';
 import SearchBar, { type SearchFilters } from './SearchBar';
 import '../styles/design-system.css';
 
@@ -227,6 +228,9 @@ export default function SearchableFeed() {
     sortBy: 'created_at',
   });
 
+  // 防抖处理筛选条件
+  const debouncedFilters = useDebounce(filters, 300);
+
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -281,21 +285,25 @@ export default function SearchableFeed() {
   }, [fetchUserLocation]);
 
   const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, status } = useInfiniteQuery({
-    queryKey: ['items', filters, userLocation],
+    queryKey: ['items', debouncedFilters, userLocation],
     queryFn: async ({ pageParam = 0 }) => {
       const skip = pageParam * PAGE_SIZE;
       const params = new URLSearchParams({ skip: skip.toString(), limit: PAGE_SIZE.toString() });
 
-      if (filters.keyword) params.append('keyword', filters.keyword);
-      if (filters.minPrice) params.append('min_price', filters.minPrice.toString());
-      if (filters.maxPrice) params.append('max_price', filters.maxPrice.toString());
-      if (filters.category) params.append('category', filters.category);
+      if (debouncedFilters.keyword) params.append('keyword', debouncedFilters.keyword);
+      if (debouncedFilters.minPrice !== null && debouncedFilters.minPrice !== undefined) {
+        params.append('min_price', debouncedFilters.minPrice.toString());
+      }
+      if (debouncedFilters.maxPrice !== null && debouncedFilters.maxPrice !== undefined) {
+        params.append('max_price', debouncedFilters.maxPrice.toString());
+      }
+      if (debouncedFilters.category) params.append('category', debouncedFilters.category);
 
-      if (userLocation && filters.useLocation !== false) {
+      if (userLocation && debouncedFilters.useLocation !== false) {
         params.append('lat', userLocation.lat.toString());
         params.append('lng', userLocation.lng.toString());
-        params.append('radius', (filters.radius || 5).toString());
-        if (filters.sortBy === 'distance') {
+        params.append('radius', (debouncedFilters.radius || 5).toString());
+        if (debouncedFilters.sortBy === 'distance') {
           params.append('sort_by', 'distance');
           params.append('sort_order', 'asc');
         }
@@ -307,7 +315,7 @@ export default function SearchableFeed() {
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => lastPage.length < PAGE_SIZE ? undefined : allPages.length,
-    enabled: !!userLocation || filters.useLocation === false,
+    enabled: !!userLocation || debouncedFilters.useLocation === false,
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
   });

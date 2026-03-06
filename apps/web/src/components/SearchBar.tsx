@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, X, SlidersHorizontal, Tag, DollarSign, MapPin, Navigation } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, X, SlidersHorizontal, Tag, DollarSign, MapPin, Navigation, AlertCircle } from 'lucide-react';
 
 export interface SearchFilters {
   keyword: string;
@@ -63,13 +63,70 @@ export default function SearchBar({
   const [radius, setRadius] = useState(initialFilters?.radius || 10);
   const [sortBy, setSortBy] = useState(initialFilters?.sortBy || 'created_at');
   const [internalShowFilters, setInternalShowFilters] = useState(false);
+  const [priceError, setPriceError] = useState<string | null>(null);
   
   // 支持受控和非受控模式
   const showFilters = controlledShowFilters !== undefined ? controlledShowFilters : internalShowFilters;
   const setShowFilters = onToggleFilters || setInternalShowFilters;
 
+  // 安全解析价格输入
+  const parsePriceInput = (value: string): string => {
+    // 只允许数字和小数点
+    const sanitized = value.replace(/[^0-9.]/g, '');
+    // 防止多个小数点
+    const parts = sanitized.split('.');
+    if (parts.length > 2) {
+      return parts[0] + '.' + parts.slice(1).join('');
+    }
+    return sanitized;
+  };
+
+  // 计算价格验证错误
+  const validatePriceRange = (min: string, max: string): string | null => {
+    const minVal = min ? parseFloat(min) : null;
+    const maxVal = max ? parseFloat(max) : null;
+    if (minVal !== null && maxVal !== null && minVal > maxVal) {
+      return '最低价格不能大于最高价格';
+    }
+    return null;
+  };
+
+  // 实时验证价格范围
+  useMemo(() => {
+    const error = validatePriceRange(minPrice, maxPrice);
+    setPriceError(error);
+  }, [minPrice, maxPrice]);
+
+  const handleMinPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parsePriceInput(e.target.value);
+    setMinPrice(value);
+  };
+
+  const handleMaxPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parsePriceInput(e.target.value);
+    setMaxPrice(value);
+  };
+
+  const handleMinPriceBlur = () => {
+    if (minPrice && isNaN(parseFloat(minPrice))) {
+      setMinPrice('');
+    }
+  };
+
+  const handleMaxPriceBlur = () => {
+    if (maxPrice && isNaN(parseFloat(maxPrice))) {
+      setMaxPrice('');
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 如果有价格错误，不提交
+    if (priceError) {
+      return;
+    }
+    
     onSearch({
       keyword: keyword.trim(),
       minPrice: minPrice ? parseFloat(minPrice) : null,
@@ -201,12 +258,16 @@ export default function SearchBar({
                 最低价格
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 min="0"
                 value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
+                onChange={handleMinPriceChange}
+                onBlur={handleMinPriceBlur}
                 placeholder="0"
-                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 outline-none"
+                className={`w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border rounded-lg text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 outline-none transition-colors ${
+                  priceError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 dark:border-gray-600'
+                }`}
               />
             </div>
 
@@ -217,15 +278,27 @@ export default function SearchBar({
                 最高价格
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 min="0"
                 value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
+                onChange={handleMaxPriceChange}
+                onBlur={handleMaxPriceBlur}
                 placeholder="不限"
-                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 outline-none"
+                className={`w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border rounded-lg text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 outline-none transition-colors ${
+                  priceError ? 'border-red-500 focus:border-red-500' : 'border-gray-200 dark:border-gray-600'
+                }`}
               />
             </div>
           </div>
+
+          {/* 价格错误提示 */}
+          {priceError && (
+            <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">
+              <AlertCircle className="w-4 h-4" />
+              <span>{priceError}</span>
+            </div>
+          )}
 
           {/* 位置筛选 */}
           <div className="space-y-2">
@@ -257,24 +330,38 @@ export default function SearchBar({
             )}
           </div>
 
-          {/* 排序 */}
+            {/* 排序 */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">排序方式</label>
+            {!userLocation && sortBy === 'distance' && (
+              <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
+                <Navigation className="w-4 h-4" />
+                <span>需要开启位置权限才能按距离排序</span>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
-              {SORT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setSortBy(opt.value as 'distance' | 'price' | 'created_at')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    sortBy === opt.value
-                      ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
-                      : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              {SORT_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const isDisabled = opt.value === 'distance' && !userLocation;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    disabled={isDisabled}
+                    onClick={() => setSortBy(opt.value as 'distance' | 'price' | 'created_at')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                      sortBy === opt.value
+                        ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                        : isDisabled
+                        ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                        : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {Icon && <Icon className="w-4 h-4" />}
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
