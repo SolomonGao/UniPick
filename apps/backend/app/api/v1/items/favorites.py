@@ -3,7 +3,6 @@
 修复竞态条件问题，使用数据库原子操作
 """
 from typing import List, Optional
-import asyncio  # 🔧 新增：用于异步发送通知
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, update, text
@@ -15,7 +14,6 @@ from app.core.security import get_current_user_id, get_current_user_id_optional
 from app.core.rate_limit import limiter, RateLimits
 from app.models.item import Item, Favorite, ViewHistory
 from app.schemas.item import ItemResponse
-from app.services.telegram import telegram_service  # 🔧 新增：Telegram通知服务
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -162,21 +160,6 @@ async def toggle_favorite(
                 favorite = Favorite(user_id=user_id, item_id=item_id)
                 db.add(favorite)
                 await db.commit()
-                
-                # 🔧 新增：发送 Telegram 收藏通知（异步，不阻塞响应）
-                try:
-                    item_url = f"https://unipick.app/item/{item_id}"
-                    asyncio.create_task(
-                        telegram_service.notify_user_favorite(
-                            user_id=user_id,
-                            item_title=item_title,
-                            item_price=item_price,
-                            item_url=item_url
-                        )
-                    )
-                except Exception as notify_error:
-                    logger.error(f"发送收藏通知失败: {notify_error}")
-                    # 通知失败不影响收藏成功
                 
                 return {"message": "收藏成功", "is_favorited": True}
             except IntegrityError:
