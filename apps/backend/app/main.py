@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.items import items, favorites
 from app.api.v1.users import profile as user_profile
 from app.api.v1 import moderation
+from app.api.v1 import messages
 from app.core.database import get_db
 from app.core.rate_limit import limiter, setup_rate_limiting
 from sqlalchemy import text
@@ -35,6 +36,7 @@ app.include_router(items.router, prefix="/api/v1/items", tags=["items"])
 app.include_router(favorites.router, prefix="/api/v1/items", tags=["favorites"])
 app.include_router(user_profile.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(moderation.router, prefix="/api/v1/moderation", tags=["moderation"])
+app.include_router(messages.router, prefix="/api/v1/messages", tags=["messages"])
 
 @app.get("/")
 async def health_check():
