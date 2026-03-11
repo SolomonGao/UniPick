@@ -7,6 +7,7 @@ export const API_ENDPOINTS = {
   base: API_BASE_URL,
   items: `${API_BASE_URL}/api/v1/items`,
   users: `${API_BASE_URL}/api/v1/users`,
+  messages: `${API_BASE_URL}/api/v1/messages`,
   predictPrice: `${API_BASE_URL}/predict-price`,
   moderation: `${API_BASE_URL}/api/v1/moderation`,
 } as const;
